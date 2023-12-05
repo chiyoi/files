@@ -81,7 +81,7 @@ async function listFiles(_: IRequest, env: Env) {
   return json(files.objects.map(file => file.key))
 }
 
-async function getFile(req: IRequest & { bucket: R2Bucket }, env: Env) {
+async function getFile(req: IRequest & { bucket: R2Bucket }) {
   const { params: { filename }, bucket } = req
   const file = await bucket.get(filename)
   if (file === null) {
