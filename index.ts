@@ -11,7 +11,8 @@ import { error, IRequest, json, Router } from 'itty-router'
 import { verifyTOTP } from 'totp-basic'
 
 export interface Env {
-  SECRET?: string
+  SECRET: string
+  VERSION: string
 
   // Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
   // kv_namespace: KVNamespace
@@ -36,24 +37,22 @@ async function withAuth(req: IRequest, env: Env) {
   if (typeof otp !== 'string') {
     return error(401, 'Missing or malformed query `otp`.')
   }
-  if (env.SECRET === undefined) {
-    return error(500, 'Internal error: Missing env `SECRET`.')
-  }
   if (!await verifyTOTP(env.SECRET, otp)) {
     return error(403, 'OTP is rejected.')
   }
 }
 
 router.get('/ping', () => json('Pong!'))
+router.all('/ping', () => error(405, 'Readonly endpoint `ping`.'))
 
-router.all('/ping', () => error(405, 'Endpoint `ping` only supports GET.'))
+router.get('/version', (_, env: Env) => json(env.VERSION))
+router.all('/version', () => error(405, 'Readonly endpoint `version`.'))
 
-router.get('/files', withAuth, async (req: IRequest, env: Env) => {
+router.get('/files', withAuth, async (_, env: Env) => {
   const files = await env.files.list()
   return json(files.objects.map(file => file.key))
 })
-
-router.all('/files', withAuth, () => error(405, 'Endpoint `files` only supports GET.'))
+router.all('/files', withAuth, () => error(405, 'Readonly endpoint `files`.'))
 
 router.get('/:filename', withAuth, async (req: IRequest, env: Env) => {
   const { params: { filename } } = req
