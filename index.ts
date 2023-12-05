@@ -22,6 +22,7 @@ export interface Env {
   //
   // Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
   files: R2Bucket
+  assets: R2Bucket
   //
   // Example binding to a Service. Learn more at https://developers.cloudflare.com/workers/runtime-apis/service-bindings/
   // MY_SERVICE: Fetcher;
@@ -30,7 +31,34 @@ export interface Env {
   // MY_QUEUE: Queue;
 }
 
-const router = Router()
+export default {
+  fetch: (req: Request, env: Env, ctx: ExecutionContext) => router()
+    .handle(req, env, ctx)
+    .catch(error)
+}
+
+
+function router() {
+  const router = Router()
+
+  router.get('/ping', () => json('Pong!'))
+  router.all('/ping', () => error(405, 'Readonly endpoint `ping`.'))
+
+  router.get('/version', (_, env: Env) => json(env.VERSION))
+  router.all('/version', () => error(405, 'Readonly endpoint `version`.'))
+
+  router.get('/files', withAuth, listFiles)
+  router.all('/files', withAuth, () => error(405, 'Readonly endpoint `files`.'))
+
+  router.get('/assets/:filename', withBucket('assets'), getFile)
+
+  router.get('/:filename', withAuth, withBucket('files'), getFile)
+  router.put('/:filename', withAuth, putFile)
+  router.delete('/:filename', withAuth, deleteFile)
+
+  router.all('*', () => error(404, 'Invalid path.'))
+  return router
+}
 
 async function withAuth(req: IRequest, env: Env) {
   const otp = req.query['otp']
@@ -42,36 +70,35 @@ async function withAuth(req: IRequest, env: Env) {
   }
 }
 
-router.get('/ping', () => json('Pong!'))
-router.all('/ping', () => error(405, 'Readonly endpoint `ping`.'))
+function withBucket(bucket: 'files' | 'assets') {
+  return (req: IRequest & { bucket: R2Bucket }, env: Env) => {
+    req.bucket = env[bucket]
+  }
+}
 
-router.get('/version', (_, env: Env) => json(env.VERSION))
-router.all('/version', () => error(405, 'Readonly endpoint `version`.'))
-
-router.get('/files', withAuth, async (_, env: Env) => {
+async function listFiles(_: IRequest, env: Env) {
   const files = await env.files.list()
   return json(files.objects.map(file => file.key))
-})
-router.all('/files', withAuth, () => error(405, 'Readonly endpoint `files`.'))
+}
 
-router.get('/:filename', withAuth, async (req: IRequest, env: Env) => {
-  const { params: { filename } } = req
-  const file = await env.files.get(filename)
+async function getFile(req: IRequest & { bucket: R2Bucket }, env: Env) {
+  const { params: { filename }, bucket } = req
+  const file = await bucket.get(filename)
   if (file === null) {
     return error(404, 'No such file.')
   }
   const headers = new Headers()
   file.writeHttpMetadata(headers)
   return new Response(file.body, { headers })
-})
+}
 
-router.put('/:filename', withAuth, async (req: IRequest, env: Env) => {
+async function putFile(req: IRequest, env: Env) {
   const { params: { filename } } = req
   await env.files.put(filename, req.body)
   return json(`Put ${filename} successfully!`)
-})
+}
 
-router.delete('/:filename', withAuth, async (req: IRequest, env: Env) => {
+async function deleteFile(req: IRequest, env: Env) {
   const { params: { filename } } = req
   const head = await env.files.head(filename)
   if (head === null) {
@@ -79,12 +106,4 @@ router.delete('/:filename', withAuth, async (req: IRequest, env: Env) => {
   }
   await env.files.delete(filename)
   return json('Deleted!')
-})
-
-router.all('*', () => error(404, 'Invalid path.'))
-
-export default {
-  fetch: (req: Request, env: Env, ctx: ExecutionContext) => router
-    .handle(req, env, ctx)
-    .catch(error)
 }

@@ -6,7 +6,7 @@ compatibility_date = "2023-11-21"
 # Note: Use secrets to store sensitive data.
 # Docs: https://developers.cloudflare.com/workers/platform/environment-variables
 [vars]
-VERSION = "Files v0.1.0"
+VERSION = "Files v0.2.0"
 
 # Bind a KV Namespace. Use KV as persistent storage for small key-value pairs.
 # Docs: https://developers.cloudflare.com/workers/runtime-apis/kv
@@ -19,6 +19,10 @@ VERSION = "Files v0.1.0"
 [[r2_buckets]]
 binding = "files"
 bucket_name = "files"
+
+[[r2_buckets]]
+binding = "assets"
+bucket_name = "assets"
 
 # Bind a Queue producer. Use this binding to schedule an arbitrary task that may be processed later by a Queue consumer.
 # Docs: https://developers.cloudflare.com/queues/get-started
