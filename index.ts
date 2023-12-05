@@ -11,7 +11,7 @@ import { error, IRequest, json, Router } from 'itty-router'
 import { verifyTOTP } from 'totp-basic'
 
 export interface Env {
-  SECRET: string
+  SECRET?: string
 
   // Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
   // kv_namespace: KVNamespace
@@ -35,6 +35,9 @@ async function withAuth(req: IRequest, env: Env) {
   const otp = req.query['otp']
   if (typeof otp !== 'string') {
     return error(401, 'Missing or malformed query `otp`.')
+  }
+  if (env.SECRET === undefined) {
+    return error(500, 'Internal error: Missing env `SECRET`.')
   }
   if (!await verifyTOTP(env.SECRET, otp)) {
     return error(403, 'OTP is rejected.')
