@@ -1,42 +1,11 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
 import { error, IRequest, json, Router } from 'itty-router'
 import { verifyTOTP } from 'totp-basic'
 
-export interface Env {
-  SECRET: string
-  VERSION: string
-
-  // Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
-  // kv_namespace: KVNamespace
-  //
-  // Example binding to Durable Object. Learn more at https://developers.cloudflare.com/workers/runtime-apis/durable-objects/
-  // MY_DURABLE_OBJECT: DurableObjectNamespace;
-  //
-  // Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
-  files: R2Bucket
-  assets: R2Bucket
-  //
-  // Example binding to a Service. Learn more at https://developers.cloudflare.com/workers/runtime-apis/service-bindings/
-  // MY_SERVICE: Fetcher;
-  //
-  // Example binding to a Queue. Learn more at https://developers.cloudflare.com/queues/javascript-apis/
-  // MY_QUEUE: Queue;
-}
-
 export default {
-  fetch: (req: Request, env: Env, ctx: ExecutionContext) => router()
-    .handle(req, env, ctx)
+  fetch: (request: Request, env: Env, ctx: ExecutionContext) => router()
+    .handle(request, env, ctx)
     .catch(error)
 }
-
 
 function router() {
   const router = Router()
@@ -60,8 +29,8 @@ function router() {
   return router
 }
 
-async function withAuth(req: IRequest, env: Env) {
-  const otp = req.query['otp']
+async function withAuth(request: IRequest, env: Env) {
+  const otp = request.query['otp']
   if (typeof otp !== 'string') {
     return error(401, 'Missing or malformed query `otp`.')
   }
@@ -81,8 +50,8 @@ async function listFiles(_: IRequest, env: Env) {
   return json(files.objects.map(file => file.key))
 }
 
-async function getFile(req: IRequest & { bucket: R2Bucket }) {
-  const { params: { filename }, bucket } = req
+async function getFile(request: IRequest & { bucket: R2Bucket }) {
+  const { params: { filename }, bucket } = request
   const file = await bucket.get(filename)
   if (file === null) {
     return error(404, 'No such file.')
@@ -92,18 +61,26 @@ async function getFile(req: IRequest & { bucket: R2Bucket }) {
   return new Response(file.body, { headers })
 }
 
-async function putFile(req: IRequest, env: Env) {
-  const { params: { filename } } = req
-  await env.files.put(filename, req.body)
+async function putFile(request: IRequest, env: Env) {
+  const { params: { filename } } = request
+  await env.files.put(filename, request.body)
   return json(`Put ${filename} successfully!`)
 }
 
-async function deleteFile(req: IRequest, env: Env) {
-  const { params: { filename } } = req
+async function deleteFile(request: IRequest, env: Env) {
+  const { params: { filename } } = request
   const head = await env.files.head(filename)
   if (head === null) {
     return error(404, 'No such file.')
   }
   await env.files.delete(filename)
   return json('Deleted!')
+}
+
+export interface Env {
+  SECRET: string
+  VERSION: string
+
+  files: R2Bucket
+  assets: R2Bucket
 }

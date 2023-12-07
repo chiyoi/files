@@ -6,5 +6,5 @@
 node_modules
 
 # wrangler
+.wrangler
 .dev.vars
-.wrangler/
