@@ -9,12 +9,8 @@ export default {
 
 function router() {
   const router = Router()
-
-  router.get('/ping', () => json('Pong!'))
-  router.all('/ping', () => error(405, 'Readonly endpoint `ping`.'))
-
-  router.get('/version', (_, env: Env) => json(env.VERSION))
-  router.all('/version', () => error(405, 'Readonly endpoint `version`.'))
+  router.all('/ping', () => json('Pong!'))
+  router.all('/version', (_, env: Env) => json(env.VERSION))
 
   router.get('/files', withAuth, listFiles)
   router.all('/files', withAuth, () => error(405, 'Readonly endpoint `files`.'))
