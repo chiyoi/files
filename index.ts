@@ -1,5 +1,6 @@
 import { error, IRequest, json, Router } from 'itty-router'
 import { verifyTOTP } from 'totp-basic'
+import { z } from 'zod'
 
 export default {
   fetch: (request: Request, env: Env, ctx: ExecutionContext) => router()
@@ -12,71 +13,68 @@ function router() {
   router.all('/ping', () => json('Pong!'))
   router.all('/version', (_, env: Env) => json(env.VERSION))
 
-  router.get('/files', withAuth, listFiles)
-  router.all('/files', withAuth, () => error(405, 'Readonly endpoint `files`.'))
+  router.post('/directory/:volume', registerVolume)
+  router.get('/directory/:volume', auth, getVolume)
+  router.gut('/directory/:volume', auth, putVolume)
+  router.all('/directory/:volume', () => error(405, 'Method not allowed.'))
+  router.get('/directory/:volume/:filename', auth, getFile)
+  router.put('/directory/:volume/:filename', auth, putFile)
+  router.all('/directory/:volume/:filename', () => error(405, 'Method not allowed.'))
 
-  router.get('/assets/:filename', withBucket('assets'), getFile)
-
-  router.get('/:filename', withAuth, withBucket('files'), getFile)
-  router.put('/:filename', withAuth, putFile)
-  router.delete('/:filename', withAuth, deleteFile)
+  router.get('/bucket/:id', getItem)
+  router.post('/bucket', postItem)
 
   router.all('*', () => error(404, 'Invalid path.'))
   return router
 }
 
-async function withAuth(request: IRequest, env: Env) {
+async function registerVolume(request: IRequest, env: Env) {
+  const { params: { volume } } = request
+  if (await env.volumes.get(volume) !== null) {
+    return error(409, 'Volume exist.')
+  }
+
+  const v = Volume.safeParse(await request.json())
+  if (!v.success) {
+    return error(400, 'Malformed request.')
+  }
+  await env.volumes.put(volume, JSON.stringify(v.data))
+}
+
+async function auth(request: IRequest, env: Env) {
+  const { params: { volume } } = request
+  const data = await env.volumes.get(volume)
+  if (data === null) {
+    return error(404, 'Volume not exist.')
+  }
+  const { secret } = Volume.parse(await data.json())
+
   const otp = request.query['otp']
-  if (typeof otp !== 'string') {
-    return error(401, 'Missing or malformed query `otp`.')
+  if (typeof otp === 'string' && await verifyTOTP(secret, otp)) return
+
+  const [scheme, token] = request.headers.get('Authorization')?.split(' ') ?? []
+  switch (scheme) {
+  case 'TOTP':
+    return await verifyTOTP(secret, token) ? void 0 : error(403, 'Invalid token.')
+  case 'Secret':
+    const encoder = new TextEncoder()
+    return crypto.subtle.timingSafeEqual(
+      encoder.encode(token),
+      encoder.encode(secret),
+    ) ? void 0 : error(403, 'Invalid token.')
   }
-  if (!await verifyTOTP(env.SECRET, otp)) {
-    return error(403, 'OTP is rejected.')
-  }
+  return error(401, 'Missing or malformed authorization token.')
 }
 
-function withBucket(bucket: 'files' | 'assets') {
-  return (req: IRequest & { bucket: R2Bucket }, env: Env) => {
-    req.bucket = env[bucket]
-  }
-}
-
-async function listFiles(_: IRequest, env: Env) {
-  const files = await env.files.list()
-  return json(files.objects.map(file => file.key))
-}
-
-async function getFile(request: IRequest & { bucket: R2Bucket }) {
-  const { params: { filename }, bucket } = request
-  const file = await bucket.get(filename)
-  if (file === null) {
-    return error(404, 'No such file.')
-  }
-  const headers = new Headers()
-  file.writeHttpMetadata(headers)
-  return new Response(file.body, { headers })
-}
-
-async function putFile(request: IRequest, env: Env) {
-  const { params: { filename } } = request
-  await env.files.put(filename, request.body)
-  return json(`Put ${filename} successfully!`)
-}
-
-async function deleteFile(request: IRequest, env: Env) {
-  const { params: { filename } } = request
-  const head = await env.files.head(filename)
-  if (head === null) {
-    return error(404, 'No such file.')
-  }
-  await env.files.delete(filename)
-  return json('Deleted!')
-}
+const Volume = z.object({
+  protected: z.enum(['get', 'put', 'both', 'none']),
+  secret: z.string(),
+})
 
 export interface Env {
-  SECRET: string
-  VERSION: string
-
-  files: R2Bucket
-  assets: R2Bucket
+  SECRET: string,
+  VERSION: string,
+  volumes: R2Bucket,
+  directory: R2Bucket,
+  bucket: R2Bucket,
 }

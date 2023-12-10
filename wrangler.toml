@@ -5,10 +5,9 @@ compatibility_date = "2023-11-21"
 [vars]
 VERSION = "Files v0.2.1"
 
-[[r2_buckets]]
-binding = "files"
-bucket_name = "files"
+[[kv_namespace]]
+binding = "directory"
 
 [[r2_buckets]]
-binding = "assets"
-bucket_name = "assets"
+binding = "bucket"
+bucket_name = "bucket"
