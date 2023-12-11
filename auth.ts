@@ -1,24 +1,29 @@
 import { IRequest, error } from "itty-router"
 import { verifyTOTP } from "totp-basic"
 import { Env } from "."
+import { Volume } from "./volumes"
 
-export async function withTOTPQueryAuthed(request: IRequest, env: Env) {
+export async function auth(request: IRequest, env: Env) {
+  const { params: { volume } } = request
+  const data = await env.volumes.get(volume)
+  if (data === null) {
+    return error(404, 'Volume not exist.')
+  }
+  const { secret } = Volume.parse(await data.json())
+
   const otp = request.query['otp']
-  if (typeof otp !== 'string') {
-    return error(401, 'Exactly one query `otp` is needed.')
-  }
-  if (!await verifyTOTP(env.SECRET, otp)) {
-    return error(403, 'Invalid OTP.')
-  }
-}
+  if (typeof otp === 'string' && await verifyTOTP(secret, otp)) return
 
-export async function withTOTPHeaderAuthed(request: IRequest, env: Env) {
-  const auth = request.headers.get('Authorization')
-  const [schema, otp] = auth?.split(' ') ?? []
-  if (schema !== 'TOTP') {
-    return error(401, 'Header `Authorization` with schema `TOTP` is needed.')
+  const [scheme, token] = request.headers.get('Authorization')?.split(' ') ?? []
+  switch (scheme) {
+  case 'TOTP':
+    return await verifyTOTP(secret, token) ? void 0 : error(403, 'Invalid token.')
+  case 'Secret':
+    const encoder = new TextEncoder()
+    return crypto.subtle.timingSafeEqual(
+      encoder.encode(token),
+      encoder.encode(secret),
+    ) ? void 0 : error(403, 'Invalid token.')
   }
-  if (!await verifyTOTP(env.SECRET, otp)) {
-    return error(403, 'Invalid OTP.')
-  }
+  return error(401, 'Missing or malformed authorization token.')
 }
