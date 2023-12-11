@@ -4,7 +4,7 @@ import { Env } from "."
 export async function getFile(request: IRequest, env: Env) {
   const { params: { volume, filename } } = request
   const key = [volume, filename].join('/')
-  if (request.query['method'] === 'list') {
+  if (!!request.query['list']) {
     const list = await env.files.list({ prefix: key })
     return json(list.objects.map(item => item.key))
   }
@@ -21,4 +21,11 @@ export async function putFile(request: IRequest, env: Env) {
   const key = [volume, filename].join('/')
   await env.files.put(key, request.body)
   return json(`Put ${key}.`)
+}
+
+export async function deleteFile(request: IRequest, env: Env) {
+  const { params: { volume, filename } } = request
+  const key = [volume, filename].join('/')
+  await env.files.delete(key)
+  return json(`Deleted ${key}`)
 }
