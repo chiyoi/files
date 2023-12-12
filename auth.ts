@@ -25,6 +25,9 @@ export function withAuth(op?: 'get' | 'put' | 'delete') {
     case 'TOTP':
       return await verifyTOTP(secret, token) ? void 0 : error(403, 'Invalid token.')
     case 'Secret':
+      if (token.length !== secret.length) {
+        return error(403, 'Invalid token.')
+      }
       const encoder = new TextEncoder()
       return crypto.subtle.timingSafeEqual(
         encoder.encode(token),
