@@ -27,5 +27,5 @@ export async function deleteFile(request: IRequest, env: Env) {
   const { params: { volume, filename } } = request
   const key = [volume, filename].join('/')
   await env.files.delete(key)
-  return json(`Deleted ${key}`)
+  return json(`Deleted ${key}.`)
 }

@@ -3,7 +3,7 @@
 
 A simplified file storage, which is able to use purely in shell, and easy to use in programs.
 - Storage: Cloudflare R2.
-- Authorization: TOTP (Time-based One-Time Password), fixed secret.
+- Authorization: TOTP (Time-based One-Time Password), customized secret.
 ---
 ### Docs
 
