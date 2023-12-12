@@ -3,7 +3,7 @@ main = "index.ts"
 compatibility_date = "2023-11-21"
 
 [vars]
-VERSION = "Files v0.3.0"
+VERSION = "Files v0.3.1"
 
 [[r2_buckets]]
 binding = "volumes"
