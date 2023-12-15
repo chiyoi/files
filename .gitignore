@@ -2,8 +2,18 @@
 .vscode
 *.swp
 
-# node
+*.local
+
+# yarn
 node_modules
+yarn-debug.log*
+yarn-error.log*
+
+# next
+.next
+out
+next-env.d.ts
+*.tsbuildinfo
 
 # wrangler
 .wrangler
