@@ -9,7 +9,7 @@ const chains = [{
   name: 'Sepolia Testnet',
   currency: 'SepoliaETH',
   explorerUrl: 'https://sepolia.etherscan.io',
-  rpcUrl: `https://eth-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`,
+  rpcUrl: `https://eth.neko03.moe/v1/sepolia`,
 }]
 const ethersConfig = defaultConfig({
   metadata: {
