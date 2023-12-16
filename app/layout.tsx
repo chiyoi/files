@@ -2,14 +2,17 @@ import type { Metadata, Viewport } from 'next'
 import '@radix-ui/themes/styles.css'
 
 export const metadata: Metadata = {
-  title: 'Cloudflare Pages Template',
-  description: 'Cloudflare Pages template.',
+  title: 'Files',
+  description: 'Web temporary file storage.',
+  icons: {
+    icon: 'https://files.neko03.moe/favicon.ico',
+  },
 }
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FBDCEF' },
-    { media: '(prefers-color-scheme: dark)', color: '#4B143D' },
+    { media: '(prefers-color-scheme: light)', color: '#FEF7FB' },
+    { media: '(prefers-color-scheme: dark)', color: '#21121D' },
   ],
 }
 

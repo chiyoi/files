@@ -1,42 +1,48 @@
 'use client'
-import { FontHachiMaruPop } from '@/fonts'
-import { StyleTextColor } from '@/styles'
-import { Button, ScrollArea, Table } from '@radix-ui/themes'
-import { useWeb3Modal, useWeb3ModalAccount, useWeb3ModalProvider, useWeb3ModalTheme } from '@web3modal/ethers/react'
-import { BrowserProvider } from 'ethers'
-import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
-
+import { useTheme } from 'next-themes'
+import { Button, Flex, ScrollArea, Table } from '@radix-ui/themes'
+import { useDisconnect, useWeb3Modal, useWeb3ModalProvider, useWeb3ModalTheme } from '@web3modal/ethers/react'
+import { BrowserProvider } from 'ethers'
 
 export default function Page() {
-  const web3Modal = useWeb3Modal()
-  const account = useWeb3ModalAccount()
-
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
   const { setThemeMode } = useWeb3ModalTheme()
   useEffect(() => setThemeMode(resolvedTheme === 'dark' ? 'dark' : 'light'), [resolvedTheme])
 
-  const { walletProvider } = useWeb3ModalProvider()
-  const [signature, setSignature] = useState('')
+  const w3m = useWeb3Modal()
+  const provider = useWeb3ModalProvider()
+  const [account, setAccount] = useState(Account)
   useEffect(() => {
-    async function getSignature() {
-      if (!account.isConnected || walletProvider === undefined) {
-        return ''
+    (async () => {
+      if (!mounted || !provider.walletProvider) {
+        setAccount(Account)
+        return
       }
-      const provider = new BrowserProvider(walletProvider)
-      const signer = await provider.getSigner()
-      const signature = await signer?.signMessage(`Sign ${account.address} into Files at ${new Date().toISOString()}.`)
-      return signature
-    }
-    getSignature().then(s => setSignature(s))
-  }, [account.address, account.isConnected, walletProvider])
+      const p = new BrowserProvider(provider.walletProvider)
+      const signer = await p.getSigner()
+      const address = signer.address
+      const message = JSON.stringify({
+        message: "Sign into files?",
+        address: address,
+        timestamp: Date.now(),
+      })
+      const signature = await signer?.signMessage(message)
+      setAccount({ address, message, signature })
+    })().catch(error => {
+      setAccount(Account)
+      console.warn(error)
+    })
+  }, [mounted, provider.walletProvider])
+
+  const [files, setFiles] = useState([])
 
   if (!mounted) return null
   return (
     <>
-      <ScrollArea m='3' type='auto' scrollbars='vertical' style={{ height: 'auto' }}>
+      <ScrollArea m='3' type='auto' scrollbars='both' style={{ height: 'auto' }}>
         <Table.Root variant='surface'>
           <Table.Header>
             <Table.Row>
@@ -47,34 +53,26 @@ export default function Page() {
           </Table.Header>
           <Table.Body>
             <Table.Row>
-              <Table.RowHeaderCell>Danilo Sousa</Table.RowHeaderCell>
-              <Table.Cell>danilo@example.com</Table.Cell>
-              <Table.Cell>Developer</Table.Cell>
-            </Table.Row>
-            <Table.Row>
-              <Table.RowHeaderCell>Zahra Ambessa</Table.RowHeaderCell>
-              <Table.Cell>zahra@example.com</Table.Cell>
-              <Table.Cell>Admin</Table.Cell>
-            </Table.Row>
-            <Table.Row>
-              <Table.RowHeaderCell>Jasper Eriksson</Table.RowHeaderCell>
-              <Table.Cell>jasper@example.com</Table.Cell>
-              <Table.Cell>Developer</Table.Cell>
-            </Table.Row>
-            <Table.Row>
-              <Table.Cell>{resolvedTheme}</Table.Cell>
-              <Table.Cell>{signature}</Table.Cell>
+              <Table.RowHeaderCell>工事中〜</Table.RowHeaderCell>
             </Table.Row>
           </Table.Body>
         </Table.Root>
       </ScrollArea>
-      <Button radius='full' onClick={() => web3Modal.open()} style={{
+      <Flex direction='column' gap='2' style={{
         position: 'fixed',
         right: '30px',
         top: '30px',
       }}>
-        {account.isConnected ? ((addr?: string) => addr ? addr.slice(0, 6) + '...' + addr.slice(-4) : 'Unknown')(account.address?.toLowerCase()) : 'Connect'}
-      </Button>
+        <Button radius='full' onClick={() => w3m.open()}>
+          {account.address !== '' ? account.address.slice(0, 6) + '...' : 'Connect'}
+        </Button>
+      </Flex>
     </>
   )
+}
+
+const Account = {
+  address: '',
+  message: '',
+  signature: '',
 }
