@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Button, Flex, ScrollArea, Table } from '@radix-ui/themes'
-import { useDisconnect, useWeb3Modal, useWeb3ModalProvider, useWeb3ModalTheme } from '@web3modal/ethers/react'
+import { useWeb3Modal, useWeb3ModalProvider, useWeb3ModalTheme } from '@web3modal/ethers/react'
 import { BrowserProvider } from 'ethers'
 
 export default function Page() {
