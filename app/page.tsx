@@ -2,8 +2,8 @@
 import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Button, Flex, ScrollArea, Table } from '@radix-ui/themes'
-import { useWeb3Modal, useWeb3ModalProvider, useWeb3ModalTheme } from '@web3modal/ethers/react'
-import { BrowserProvider } from 'ethers'
+import { useWeb3Modal, useWeb3ModalAccount, useWeb3ModalTheme } from '@web3modal/ethers/react'
+import { useSignMessage } from 'wagmi'
 
 export default function Page() {
   const { resolvedTheme } = useTheme()
@@ -13,29 +13,19 @@ export default function Page() {
   useEffect(() => setThemeMode(resolvedTheme === 'dark' ? 'dark' : 'light'), [resolvedTheme])
 
   const w3m = useWeb3Modal()
-  const provider = useWeb3ModalProvider()
-  const [account, setAccount] = useState(Account)
+  const account = useWeb3ModalAccount()
+  const [message, setMessage] = useState('')
+  const { data, status, signMessage } = useSignMessage()
   useEffect(() => {
-    (async () => {
-      if (!mounted || !provider.walletProvider) {
-        setAccount(Account)
-        return
-      }
-      const p = new BrowserProvider(provider.walletProvider)
-      const signer = await p.getSigner()
-      const address = signer.address
-      const message = JSON.stringify({
-        message: "Sign into files?",
-        address: address,
-        timestamp: Date.now(),
-      })
-      const signature = await signer?.signMessage(message)
-      setAccount({ address, message, signature })
-    })().catch(error => {
-      setAccount(Account)
-      console.warn(error)
+    if (!mounted || !account.isConnected) return
+    const message = JSON.stringify({
+      message: "Sign into files?",
+      address: account.address,
+      timestamp: Date.now(),
     })
-  }, [mounted, provider.walletProvider])
+    setMessage(message)
+    signMessage({ message })
+  }, [mounted, account.isConnected])
 
   const [files, setFiles] = useState([])
 
@@ -64,15 +54,9 @@ export default function Page() {
         top: '30px',
       }}>
         <Button radius='full' onClick={() => w3m.open()}>
-          {account.address !== '' ? account.address.slice(0, 6) + '...' : 'Connect'}
+          {account.isConnected ? (account.address ? account.address.slice(0, 6) + '...' : 'Unknown') : 'Connect'}
         </Button>
       </Flex>
     </>
   )
-}
-
-const Account = {
-  address: '',
-  message: '',
-  signature: '',
 }
