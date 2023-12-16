@@ -8,7 +8,6 @@
     "@stitches/react": "^1.2.8",
     "@uidotdev/usehooks": "^2.4.1",
     "@walletconnect/web3wallet": "^1.9.5",
-    "@web3modal/ethers": "^3.5.0",
     "@web3modal/wagmi": "^3.5.0",
     "@web3modal/wallet": "^3.5.0",
     "blurhash": "^2.0.5",
