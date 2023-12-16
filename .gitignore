@@ -3,6 +3,7 @@
 *.swp
 
 *.local
+*.dev
 
 # yarn
 node_modules
