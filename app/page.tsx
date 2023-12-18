@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { FontHachiMaruPop } from '@/fonts'
 
 const APIEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT
+const IPFSEndpoint = process.env.NEXT_PUBLIC_IPFS_ENDPOINT
 
 export default function Page() {
   const { resolvedTheme } = useTheme()
@@ -18,7 +19,8 @@ export default function Page() {
   useEffect(() => setThemeMode(resolvedTheme === 'dark' ? 'dark' : 'light'), [resolvedTheme])
 
   const w3m = useWeb3Modal()
-  const { address, status: accountStatus } = useAccount()
+  const { address: addressWithCheck, status: accountStatus } = useAccount()
+  const address = addressWithCheck?.toLowerCase()
   const [message, setMessage] = useState('')
   const { data, status: signStatus, signMessage, reset } = useSignMessage()
   useEffect(() => {
@@ -44,39 +46,65 @@ export default function Page() {
     listFiles()
   }, [mounted, signStatus])
 
-  const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [listing, setListing] = useState(false)
+  const [loadIndicator, setLoadIndicator] = useState('...')
+  useEffect(() => {
+    if (!uploading) return
+    const timer = setInterval(() => setLoadIndicator(loadIndicator => {
+      switch (loadIndicator) {
+      case '.': return '..'
+      case '..': return '...'
+      case '...': return '.'
+      default: return '...'
+      }
+    }), 1000)
+    return () => clearInterval(timer)
+  }, [uploading])
+
   async function listFiles() {
     if (!mounted || typeof address !== 'string' || signStatus !== 'success') return
-    setLoading(true)
-    const response = await fetch(`${APIEndpoint}/${address}?list=1`, { headers })
-    const body = await response.json()
-    const parsed = Files.safeParse(body)
-    if (parsed.success) setFiles(parsed.data)
-    else console.error(parsed.error, body)
-    setLoading(false)
+    try {
+      setListing(true)
+      const response = await fetch(`${APIEndpoint}/${address}`, { headers })
+      const body = await response.json()
+      setFiles(Files.parse(body))
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setListing(false)
+    }
   }
 
   async function putFile(file: File) {
     if (!mounted || typeof address !== 'string' || signStatus !== 'success') return
-    const response = await fetch(`${APIEndpoint}/${address}/${file.name}`, {
-      method: 'PUT',
-      headers,
-      body: file,
-    })
-    if (!response.ok) {
-      console.warn(`Put ${file.name}: ${response.statusText}`)
-      return
+    try {
+      setUploading(true)
+      const response = await fetch(`${APIEndpoint}/${address}/${file.name}`, {
+        method: 'PUT',
+        headers,
+        body: file,
+      })
+      if (!response.ok) throw new Error(`Put ${file.name}: ${response.statusText}`)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setUploading(false)
     }
   }
 
   async function deleteFile(key: string) {
     if (!mounted || typeof address !== 'string' || signStatus !== 'success') return
-    const response = await fetch(`${APIEndpoint}/${key}`, {
-      headers,
-      method: 'DELETE',
-    })
-    if (!response.ok) {
-      console.warn(`Delete ${key}: ${response.statusText}`)
+    try {
+      const response = await fetch(`${APIEndpoint}/${key}`, {
+        headers,
+        method: 'DELETE',
+      })
+      if (!response.ok) {
+        console.warn(`Delete ${key}: ${response.statusText}`)
+      }
+    } catch (error) {
+      console.error(error)
     }
   }
 
@@ -94,7 +122,7 @@ export default function Page() {
           e.preventDefault()
           setDragOver(false)
           const files = e.dataTransfer?.files
-          if (files === undefined) return
+          if (!files) return
           for (const file of files) {
             putFile(file).then(listFiles)
           }
@@ -103,20 +131,22 @@ export default function Page() {
           <Table.Root variant='surface'>
             <Table.Header>
               <Table.Row>
-                <Table.ColumnHeaderCell />
-                <Table.ColumnHeaderCell>Key</Table.ColumnHeaderCell>
-                <Table.ColumnHeaderCell>Uploaded</Table.ColumnHeaderCell>
-                <Table.ColumnHeaderCell>Size</Table.ColumnHeaderCell>
-                <Table.ColumnHeaderCell />
+                <Table.ColumnHeaderCell width={1} />
+                <Table.ColumnHeaderCell width={1}>CID</Table.ColumnHeaderCell>
+                <Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell>
+                <Table.ColumnHeaderCell width={1} />
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {signStatus === 'success' && !loading && files.map(file => (
-                <Table.Row key={file.key}>
+              {signStatus === 'success' && !listing && files.map(file => (
+                <Table.Row key={file.cid}>
                   <Table.Cell></Table.Cell>
+                  <Table.Cell>
+                    <Link href={`${IPFSEndpoint}/ipfs/${file.cid}`}>
+                      {file.cid}
+                    </Link>
+                  </Table.Cell>
                   <Table.Cell>{file.key.slice(`${address}/`.length)}</Table.Cell>
-                  <Table.Cell>{bytesToHumanReadable(file.size)}</Table.Cell>
-                  <Table.Cell>{file.uploaded.toUTCString()}</Table.Cell>
                   <Table.Cell>
                     <DropdownMenu.Root>
                       <DropdownMenu.Trigger>
@@ -141,8 +171,10 @@ export default function Page() {
             ...FontHachiMaruPop.style,
             textAlign: 'center',
           }}>
-            {loading ? (
-              'Loading...'
+            {listing ? (
+              'Listing files...'
+            ) : uploading ? (
+              `Uploading${loadIndicator}`
             ) : dragOver ? (
               'Drop to upload.'
             ) : signStatus === 'success' ? (
@@ -155,11 +187,13 @@ export default function Page() {
 
                   // Handle file selection
                   input.onchange = (event) => {
-                    const file = (event.target as HTMLInputElement).files?.[0]
-                    if (!file) return
-
-                    // Process the file here
-                    putFile(file).then(listFiles)
+                    const files = (event.target as HTMLInputElement).files
+                    // Modified
+                    if (!files) return
+                    for (const file of files) {
+                      putFile(file).then(listFiles)
+                    }
+                    // End Modified
                   }
 
                   // Simulate a click to open the file dialog
@@ -174,7 +208,7 @@ export default function Page() {
         </Box>
       </ScrollArea>
 
-      <Flex direction='column' gap='2' style={{
+      <Flex gap='2' style={{
         position: 'fixed',
         right: '10px',
         top: '5px',
@@ -183,9 +217,9 @@ export default function Page() {
           {accountStatus === 'connected' ? (
             address ? address.slice(0, 6) + '...' : 'Unknown'
           ) : accountStatus === 'reconnecting' ? (
-            'Loading...'
+            `Loading...`
           ) : accountStatus === 'connecting' ? (
-            'Connecting...'
+            `Connecting...`
           ) : (
             'Connect'
           )}
@@ -195,24 +229,7 @@ export default function Page() {
   )
 }
 
-// Generated: GPT-4
-function bytesToHumanReadable(numBytes: number): string {
-  // Define the unit list
-  const units: string[] = ["Bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"]
-  let i: number = 0
-
-  // Convert bytes to a higher unit until a suitable unit is found
-  while (numBytes >= 1024 && i < units.length - 1) {
-    numBytes /= 1024
-    i++
-  }
-
-  // Return the formatted string
-  return `${numBytes.toFixed(2)} ${units[i]}`
-}
-
 const Files = z.object({
+  cid: z.string(),
   key: z.string(),
-  size: z.number(),
-  uploaded: z.coerce.date(),
 }).array()
