@@ -2,7 +2,7 @@ const { PHASE_DEVELOPMENT_SERVER } = require('next/constants')
 
 module.exports = (phase, { defaultConfig }) => {
   /** @type {import('next').NextConfig} */
-  const commonConfig = {
+  const config = {
     ...defaultConfig,
     webpack: config => {
       config.externals.push('pino-pretty', 'lokijs', 'encoding')
@@ -15,7 +15,7 @@ module.exports = (phase, { defaultConfig }) => {
   }
 
   return phase === PHASE_DEVELOPMENT_SERVER ? {
-    ...commonConfig,
+    ...config,
     async rewrites() {
       return [
         {
@@ -25,7 +25,7 @@ module.exports = (phase, { defaultConfig }) => {
       ]
     },
   } : {
-    ...commonConfig,
+    ...config,
     output: 'export',
   }
 }
