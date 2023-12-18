@@ -71,7 +71,7 @@ export default function Page() {
 
   async function deleteFile(key: string) {
     if (!mounted || typeof address !== 'string' || signStatus !== 'success') return
-    const response = await fetch(`${APIEndpoint}/${address}/${key}`, {
+    const response = await fetch(`${APIEndpoint}/${key}`, {
       headers,
       method: 'DELETE',
     })
@@ -114,7 +114,7 @@ export default function Page() {
               {signStatus === 'success' && !loading && files.map(file => (
                 <Table.Row key={file.key}>
                   <Table.Cell></Table.Cell>
-                  <Table.Cell>{file.key}</Table.Cell>
+                  <Table.Cell>{file.key.slice(`${address}/`.length)}</Table.Cell>
                   <Table.Cell>{bytesToHumanReadable(file.size)}</Table.Cell>
                   <Table.Cell>{file.uploaded.toUTCString()}</Table.Cell>
                   <Table.Cell>
