@@ -2,11 +2,11 @@
 import { ThemeProvider } from "next-themes"
 import { createWeb3Modal, defaultWagmiConfig } from '@web3modal/wagmi/react'
 import { Flex, Theme } from "@radix-ui/themes"
-import { sepolia } from 'viem/chains'
+import { sepolia, mainnet } from 'viem/chains'
 import { WagmiConfig } from 'wagmi'
 
 const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || ""
-const chains = [sepolia]
+const chains = [sepolia, mainnet]
 const metadata = {
   name: 'Files',
   description: 'Web temporary file storage.',

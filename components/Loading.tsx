@@ -1,5 +1,5 @@
-import { FontHachiMaruPop } from '@/fonts'
-import { StyleTextAccent } from '@/styles'
+import { FontHachiMaruPop } from '@/modules/fonts'
+import { StyleTextAccent } from '@/modules/styles'
 import { Flex, Text } from '@radix-ui/themes'
 
 export default function Loading() {

@@ -6,10 +6,14 @@ import { DotsVerticalIcon } from '@radix-ui/react-icons'
 import { useWeb3Modal, useWeb3ModalTheme } from '@web3modal/wagmi/react'
 import { useSignMessage, useAccount } from 'wagmi'
 import { z } from 'zod'
-import { FontHachiMaruPop } from '@/fonts'
+import { FontHachiMaruPop } from '@/modules/fonts'
 
 const APIEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT
 const IPFSEndpoint = process.env.NEXT_PUBLIC_IPFS_ENDPOINT
+
+function Message(salt: string) {
+  return `Sign into files? (Signature of this message will be used as encrypt key and authorization token.)\nSalt: ${salt}`
+}
 
 export default function Page() {
   const { resolvedTheme } = useTheme()
@@ -19,26 +23,35 @@ export default function Page() {
   useEffect(() => setThemeMode(resolvedTheme === 'dark' ? 'dark' : 'light'), [resolvedTheme])
 
   const w3m = useWeb3Modal()
-  const { address: addressWithCheck, status: accountStatus } = useAccount()
+  const { address: addressWithCheck, isConnected, status: accountStatus } = useAccount()
   const address = addressWithCheck?.toLowerCase()
-  const [message, setMessage] = useState('')
-  const { data, status: signStatus, signMessage, reset } = useSignMessage()
+
+  const [salt, setSalt] = useState<string>()
+  const message = salt === undefined ? undefined : Message(salt)
   useEffect(() => {
-    if (!mounted || accountStatus !== 'connected') return
-    const message = `Sign into files?\n${JSON.stringify({
-      address,
-      timestamp: Date.now(),
-    })}`
-    setMessage(message)
+    (async () => {
+      if (!mounted || !isConnected) return
+      try {
+        setSalt(z.string().parse(await (await fetch(`${APIEndpoint}/salts/${address}`)).json()))
+      } catch (error) {
+        console.error(error)
+      }
+    })()
+  }, [mounted, isConnected])
+
+  const { data: signature, status: signStatus, signMessage, reset } = useSignMessage()
+  useEffect(() => {
+    if (!mounted || !isConnected || message === undefined) return
     signMessage({ message })
     return reset
-  }, [mounted, accountStatus])
+  }, [mounted, isConnected, message])
 
   const headers = useMemo(() => {
+    if (message === undefined || signature === undefined) return
     const headers = new Headers()
-    headers.set('Authorization', `Signature ${btoa(message)}:${data}`)
+    headers.set('Authorization', `Signature ${btoa(message)}:${signature}`)
     return headers
-  }, [data])
+  }, [message, signature])
 
   const [files, setFiles] = useState<z.infer<typeof Files>>([])
   const [dragOver, setDragOver] = useState(false)
@@ -63,46 +76,43 @@ export default function Page() {
   }, [uploading])
 
   async function listFiles() {
-    if (!mounted || typeof address !== 'string' || signStatus !== 'success') return
+    if (!mounted || address === undefined || signStatus !== 'success') return
+    setListing(true)
     try {
-      setListing(true)
-      const response = await fetch(`${APIEndpoint}/${address}`, { headers })
-      const body = await response.json()
-      setFiles(Files.parse(body))
+      const response = await (await fetch(`${APIEndpoint}/${address}`, { headers })).json()
+      const files = Files.parse(response)
+      setFiles(files)
     } catch (error) {
+      setFiles([])
       console.error(error)
-    } finally {
-      setListing(false)
     }
+    setListing(false)
   }
 
   async function putFile(file: File) {
-    if (!mounted || typeof address !== 'string' || signStatus !== 'success') return
+    if (!mounted || address === undefined || signStatus !== 'success') return
+    setUploading(true)
     try {
-      setUploading(true)
       const response = await fetch(`${APIEndpoint}/${address}/${file.name}`, {
         method: 'PUT',
         headers,
         body: file,
       })
-      if (!response.ok) throw new Error(`Put ${file.name}: ${response.statusText}`)
+      if (!response.ok) console.warn(`Put ${file.name} error.`)
     } catch (error) {
       console.error(error)
-    } finally {
-      setUploading(false)
     }
+    setUploading(false)
   }
 
-  async function deleteFile(key: string) {
-    if (!mounted || typeof address !== 'string' || signStatus !== 'success') return
+  async function deleteFile(filename: string) {
+    if (!mounted || address === undefined || signStatus !== 'success') return
     try {
-      const response = await fetch(`${APIEndpoint}/${key}`, {
-        headers,
+      const response = await fetch(`${APIEndpoint}/${address}/${filename}`, {
         method: 'DELETE',
+        headers,
       })
-      if (!response.ok) {
-        console.warn(`Delete ${key}: ${response.statusText}`)
-      }
+      if (!response.ok) console.warn(`Delete ${filename} error.`)
     } catch (error) {
       console.error(error)
     }
@@ -121,10 +131,15 @@ export default function Page() {
         onDrop={e => {
           e.preventDefault()
           setDragOver(false)
-          const files = e.dataTransfer?.files
-          if (!files) return
-          for (const file of files) {
-            putFile(file).then(listFiles)
+          const items = e.dataTransfer.items
+          for (const item of items) {
+            const entry = item.webkitGetAsEntry()
+            if (entry?.isFile) {
+              const file = item.getAsFile()
+              if (file instanceof File) putFile(file).then(listFiles)
+            } else if (entry?.isDirectory) {
+              console.error('Directory is not supported.') // TODO: Add toast
+            }
           }
         }}>
         <Box m='3'>
@@ -133,7 +148,7 @@ export default function Page() {
               <Table.Row>
                 <Table.ColumnHeaderCell width={1} />
                 <Table.ColumnHeaderCell width={1}>CID</Table.ColumnHeaderCell>
-                <Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell>
+                <Table.ColumnHeaderCell>Filename</Table.ColumnHeaderCell>
                 <Table.ColumnHeaderCell width={1} />
               </Table.Row>
             </Table.Header>
@@ -142,11 +157,11 @@ export default function Page() {
                 <Table.Row key={file.cid}>
                   <Table.Cell></Table.Cell>
                   <Table.Cell>
-                    <Link href={`${IPFSEndpoint}/ipfs/${file.cid}`}>
+                    <Link download href={`${IPFSEndpoint}/ipfs/${file.cid}?filename=${file.filename}`}>
                       {file.cid}
                     </Link>
                   </Table.Cell>
-                  <Table.Cell>{file.key.slice(`${address}/`.length)}</Table.Cell>
+                  <Table.Cell>{file.filename}</Table.Cell>
                   <Table.Cell>
                     <DropdownMenu.Root>
                       <DropdownMenu.Trigger>
@@ -156,7 +171,7 @@ export default function Page() {
                       </DropdownMenu.Trigger>
                       <DropdownMenu.Content align='end'>
                         <DropdownMenu.Item color="red" onClick={() => {
-                          deleteFile(file.key).then(listFiles)
+                          deleteFile(file.filename).then(listFiles)
                         }}>
                           Delete
                         </DropdownMenu.Item>
@@ -178,29 +193,27 @@ export default function Page() {
             ) : dragOver ? (
               'Drop to upload.'
             ) : signStatus === 'success' ? (
-              <>
-                Drag and drop or <Link onClick={() => {
-                  // Generated: Create a dummy input and click it. (GPT-4)
-                  // Create a new input element
-                  const input = document.createElement('input')
-                  input.type = 'file'
+              <>Drag and drop or <Link onClick={() => {
+                // Generated: Create a dummy input and click it. (GPT-4)
+                // Create a new input element
+                const input = document.createElement('input')
+                input.type = 'file'
 
-                  // Handle file selection
-                  input.onchange = (event) => {
-                    const files = (event.target as HTMLInputElement).files
-                    // Modified
-                    if (!files) return
-                    for (const file of files) {
-                      putFile(file).then(listFiles)
-                    }
-                    // End Modified
+                // Handle file selection
+                input.onchange = (event) => {
+                  const files = (event.target as HTMLInputElement).files
+                  // Modified
+                  if (!files) return
+                  for (const file of files) {
+                    putFile(file).then(listFiles)
                   }
+                  // End Modified
+                }
 
-                  // Simulate a click to open the file dialog
-                  input.click()
-                  // End Generated
-                }}>Select files...</Link>
-              </>
+                // Simulate a click to open the file dialog
+                input.click()
+                // End Generated
+              }}>Select files...</Link></>
             ) : (
               'Sign in...'
             )}
@@ -213,13 +226,17 @@ export default function Page() {
         right: '10px',
         top: '5px',
       }}>
+        <Button radius='full' onClick={async () => {
+          await fetch(`${APIEndpoint}/salts/${address}`, {
+            method: 'POST',
+            headers,
+          })
+        }}>Reset</Button>
         <Button disabled={['connecting', 'reconnecting'].includes(accountStatus)} radius='full' onClick={() => w3m.open()}>
           {accountStatus === 'connected' ? (
             address ? address.slice(0, 6) + '...' : 'Unknown'
-          ) : accountStatus === 'reconnecting' ? (
+          ) : ['reconnecting', 'connecting'].includes(accountStatus) ? (
             `Loading...`
-          ) : accountStatus === 'connecting' ? (
-            `Connecting...`
           ) : (
             'Connect'
           )}
@@ -231,5 +248,5 @@ export default function Page() {
 
 const Files = z.object({
   cid: z.string(),
-  key: z.string(),
+  filename: z.string(),
 }).array()
