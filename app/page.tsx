@@ -10,6 +10,7 @@ import { FontHachiMaruPop } from '@/modules/fonts'
 import Connect from '@/components/Connect'
 import Delete from '@/components/Delete'
 import Configure from '@/components/Configure'
+import SelectAddress from '@/components/SelectAddress'
 
 const APIEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT
 const IPFSGatewayEndpoint = process.env.NEXT_PUBLIC_IPFS_GATEWAY_ENDPOINT
@@ -234,9 +235,9 @@ export default function Page() {
                 input.click()
               }}>Select files...</Link></>
             ) : address === undefined ? (
-              <Connect addressState={[address, setAddress]} trigger={
-                <Link>Connect...</Link>
-              } />
+              <><Link onClick={() => w3m.open()}>Sign in...</Link> or <SelectAddress closeMenu={() => void 0} addressState={[address, setAddress]} trigger={
+                <Link>Look Around...</Link>
+              } /></>
             ) : (
               <Link onClick={() => w3m.open()}>Sign in...</Link>
             )}
