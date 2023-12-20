@@ -5,7 +5,7 @@ import { useWeb3Modal } from '@web3modal/wagmi/react'
 import { useState } from 'react'
 
 export default function Configure(props: Props) {
-  const { trigger, isConnected, isConnecting, addressState, setAddressName } = props
+  const { trigger, isConnected, isConnecting, isSigned, addressState, setAddressName } = props
   const [address] = addressState
   const [open, setOpen] = useState(false)
   const w3m = useWeb3Modal()
@@ -23,7 +23,7 @@ export default function Configure(props: Props) {
             'Wallet'
           )}
         </DropdownMenu.Item>
-        {!isConnected || address === undefined ? (
+        {!isConnected || address === undefined || !isSigned ? (
           <SelectAddress closeMenu={() => setOpen(false)} addressState={addressState} trigger={
             <DropdownMenu.Item onSelect={e => e.preventDefault()}>
               Change Address
@@ -45,6 +45,7 @@ type Props = {
   trigger: React.ReactNode,
   isConnected: boolean,
   isConnecting: boolean,
+  isSigned: boolean,
   addressState: [string | undefined, React.Dispatch<React.SetStateAction<string | undefined>>],
   setAddressName: (name: string) => void,
 }

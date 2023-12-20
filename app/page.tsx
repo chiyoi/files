@@ -74,7 +74,6 @@ export default function Page() {
   }
 
   const [uploading, setUploading] = useState(false)
-
   async function putFile(file: File) {
     if (!mounted || address === undefined || !isSigned) return
     setUploading(true)
@@ -239,7 +238,10 @@ export default function Page() {
                 <Link>Look Around...</Link>
               } /></>
             ) : (
-              <Link onClick={() => w3m.open()}>Sign in...</Link>
+              <Link onClick={() => {
+                if (isConnected && message !== undefined) signMessage({ message })
+                else w3m.open()
+              }}>Sign in...</Link>
             )}
           </Text>
         </Box>
@@ -248,7 +250,7 @@ export default function Page() {
       {address === undefined ? (
         <Connect addressState={[address, setAddress]} trigger={TopRightButton} />
       ) : (
-        <Configure isConnected={isConnected} isConnecting={isConnecting} addressState={[address, setAddress]} setAddressName={setAddressName} trigger={TopRightButton} />
+        <Configure isConnected={isConnected} isConnecting={isConnecting} isSigned={isSigned} addressState={[address, setAddress]} setAddressName={setAddressName} trigger={TopRightButton} />
       )}
     </>
   )
