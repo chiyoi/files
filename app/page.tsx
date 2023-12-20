@@ -1,19 +1,18 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { useTheme } from 'next-themes'
-import { Box, Button, DropdownMenu, Flex, IconButton, ScrollArea, Table, Text, Link } from '@radix-ui/themes'
+import { Box, Button, IconButton, ScrollArea, Table, Text, Link } from '@radix-ui/themes'
 import { DotsVerticalIcon } from '@radix-ui/react-icons'
 import { useWeb3Modal, useWeb3ModalTheme } from '@web3modal/wagmi/react'
 import { useSignMessage, useAccount } from 'wagmi'
 import { z } from 'zod'
 import { FontHachiMaruPop } from '@/modules/fonts'
+import Connect from '@/components/Connect'
+import Delete from '@/components/Delete'
+import Configure from '@/components/Configure'
 
 const APIEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT
-const IPFSEndpoint = process.env.NEXT_PUBLIC_IPFS_ENDPOINT
-
-function Message(salt: string) {
-  return `Sign into files? (Signature of this message will be used as encrypt key and authorization token.)\nSalt: ${salt}`
-}
+const IPFSGatewayEndpoint = process.env.NEXT_PUBLIC_IPFS_GATEWAY_ENDPOINT
 
 export default function Page() {
   const { resolvedTheme } = useTheme()
@@ -22,24 +21,22 @@ export default function Page() {
   const { setThemeMode } = useWeb3ModalTheme()
   useEffect(() => setThemeMode(resolvedTheme === 'dark' ? 'dark' : 'light'), [resolvedTheme])
 
+  const [address, setAddress] = useState<string>()
+
   const w3m = useWeb3Modal()
   const { address: addressWithCheck, isConnected, status: accountStatus } = useAccount()
-  const address = addressWithCheck?.toLowerCase()
-
-  const [salt, setSalt] = useState<string>()
-  const message = salt === undefined ? undefined : Message(salt)
   useEffect(() => {
-    (async () => {
-      if (!mounted || !isConnected) return
-      try {
-        setSalt(z.string().parse(await (await fetch(`${APIEndpoint}/salts/${address}`)).json()))
-      } catch (error) {
-        console.error(error)
-      }
-    })()
-  }, [mounted, isConnected])
+    if (!isConnected) return
+    setAddress(addressWithCheck?.toLowerCase())
+  }, [isConnected, addressWithCheck])
+  const isConnecting = accountStatus === 'connecting' || accountStatus === 'reconnecting'
 
-  const { data: signature, status: signStatus, signMessage, reset } = useSignMessage()
+  const message = useMemo(() => {
+    if (!isConnected || address === undefined) return
+    return `Sign into files?\nAddress: ${address}\nTimestamp: ${Date.now()}`
+  }, [isConnected, address])
+
+  const { data: signature, isSuccess: isSigned, signMessage, reset } = useSignMessage()
   useEffect(() => {
     if (!mounted || !isConnected || message === undefined) return
     signMessage({ message })
@@ -57,10 +54,72 @@ export default function Page() {
   const [dragOver, setDragOver] = useState(false)
   useEffect(() => {
     listFiles()
-  }, [mounted, signStatus])
+  }, [mounted, address])
+
+  const [listing, setListing] = useState(false)
+  async function listFiles() {
+    if (!mounted || address === undefined) return
+    setListing(true)
+    try {
+      const response = await fetch(`${APIEndpoint}/files/${address}`)
+      if (!response.ok) console.error(`List files error: ${await response.text()}`)
+      const files = Files.parse(await response.json())
+      setFiles(files)
+    } catch (error) {
+      setFiles([])
+      console.error(error)
+    }
+    setListing(false)
+  }
 
   const [uploading, setUploading] = useState(false)
-  const [listing, setListing] = useState(false)
+
+  async function putFile(file: File) {
+    if (!mounted || address === undefined || !isSigned) return
+    setUploading(true)
+    try {
+      const response = await fetch(`${APIEndpoint}/files/${address}/${file.name}`, {
+        method: 'PUT',
+        headers,
+        body: file,
+      })
+      if (!response.ok) console.warn(`Put ${file.name} error: ${await response.text()}`)
+    } catch (error) {
+      console.error(error)
+    }
+    setUploading(false)
+  }
+
+  const [deleting, setDeleting] = useState(false)
+  async function deleteFile(filename: string) {
+    if (!mounted || address === undefined || !isSigned) return
+    setDeleting(true)
+    try {
+      const response = await fetch(`${APIEndpoint}/files/${address}/${filename}`, {
+        method: 'DELETE',
+        headers,
+      })
+      if (!response.ok) console.warn(`Delete ${filename} error: ${await response.text()}`)
+    } catch (error) {
+      console.error(error)
+    }
+    setDeleting(false)
+  }
+
+  async function setAddressName(name: string) {
+    if (!mounted || address === undefined || headers === undefined) return
+    try {
+      const response = await fetch(`${APIEndpoint}/names/${address}`, {
+        method: 'PUT',
+        headers,
+        body: name,
+      })
+      if (!response.ok) console.warn(`Set address name error: ${await response.text()}`)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
   const [loadIndicator, setLoadIndicator] = useState('...')
   useEffect(() => {
     if (!uploading) return
@@ -75,48 +134,21 @@ export default function Page() {
     return () => clearInterval(timer)
   }, [uploading])
 
-  async function listFiles() {
-    if (!mounted || address === undefined || signStatus !== 'success') return
-    setListing(true)
-    try {
-      const response = await (await fetch(`${APIEndpoint}/${address}`, { headers })).json()
-      const files = Files.parse(response)
-      setFiles(files)
-    } catch (error) {
-      setFiles([])
-      console.error(error)
-    }
-    setListing(false)
-  }
-
-  async function putFile(file: File) {
-    if (!mounted || address === undefined || signStatus !== 'success') return
-    setUploading(true)
-    try {
-      const response = await fetch(`${APIEndpoint}/${address}/${file.name}`, {
-        method: 'PUT',
-        headers,
-        body: file,
-      })
-      if (!response.ok) console.warn(`Put ${file.name} error.`)
-    } catch (error) {
-      console.error(error)
-    }
-    setUploading(false)
-  }
-
-  async function deleteFile(filename: string) {
-    if (!mounted || address === undefined || signStatus !== 'success') return
-    try {
-      const response = await fetch(`${APIEndpoint}/${address}/${filename}`, {
-        method: 'DELETE',
-        headers,
-      })
-      if (!response.ok) console.warn(`Delete ${filename} error.`)
-    } catch (error) {
-      console.error(error)
-    }
-  }
+  const TopRightButton = (
+    <Button disabled={isConnecting} radius='full' style={{
+      position: 'fixed',
+      right: '10px',
+      top: '5px',
+    }}>
+      {address !== undefined ? (
+        address.slice(0, 6) + '...'
+      ) : isConnecting ? (
+        `Loading...`
+      ) : (
+        'Connect'
+      )}
+    </Button>
+  )
 
   if (!mounted) return null
   return (
@@ -153,95 +185,70 @@ export default function Page() {
               </Table.Row>
             </Table.Header>
             <Table.Body>
-              {signStatus === 'success' && !listing && files.map(file => (
+              {address !== undefined && !listing && files.map(file => (
                 <Table.Row key={file.cid}>
                   <Table.Cell></Table.Cell>
                   <Table.Cell>
-                    <Link download href={`${IPFSEndpoint}/ipfs/${file.cid}?filename=${file.filename}`}>
+                    <Link download href={`${IPFSGatewayEndpoint}/ipfs/${file.cid}?filename=${file.filename}`}>
                       {file.cid}
                     </Link>
                   </Table.Cell>
                   <Table.Cell>{file.filename}</Table.Cell>
                   <Table.Cell>
-                    <DropdownMenu.Root>
-                      <DropdownMenu.Trigger>
-                        <IconButton variant='ghost' radius='full'>
-                          <DotsVerticalIcon />
-                        </IconButton>
-                      </DropdownMenu.Trigger>
-                      <DropdownMenu.Content align='end'>
-                        <DropdownMenu.Item color="red" onClick={() => {
-                          deleteFile(file.filename).then(listFiles)
-                        }}>
-                          Delete
-                        </DropdownMenu.Item>
-                      </DropdownMenu.Content>
-                    </DropdownMenu.Root>
+                    <Delete filename={file.filename} isSigned={isSigned} deleteFile={deleteFile} listFiles={listFiles} trigger={
+                      <IconButton variant='ghost' radius='full'>
+                        <DotsVerticalIcon />
+                      </IconButton>
+                    } />
                   </Table.Cell>
                 </Table.Row>
               ))}
             </Table.Body>
           </Table.Root>
+
           <Text as='p' mt='3' mx='auto' style={{
             ...FontHachiMaruPop.style,
             textAlign: 'center',
           }}>
-            {listing ? (
+            {isConnecting ? (
+              'Loading...'
+            ) : listing ? (
               'Listing files...'
             ) : uploading ? (
               `Uploading${loadIndicator}`
+            ) : deleting ? (
+              'Deleting...'
             ) : dragOver ? (
               'Drop to upload.'
-            ) : signStatus === 'success' ? (
+            ) : isSigned ? (
               <>Drag and drop or <Link onClick={() => {
-                // Generated: Create a dummy input and click it. (GPT-4)
-                // Create a new input element
                 const input = document.createElement('input')
                 input.type = 'file'
-
-                // Handle file selection
                 input.onchange = (event) => {
                   const files = (event.target as HTMLInputElement).files
-                  // Modified
                   if (!files) return
                   for (const file of files) {
                     putFile(file).then(listFiles)
                   }
-                  // End Modified
                 }
-
-                // Simulate a click to open the file dialog
                 input.click()
-                // End Generated
               }}>Select files...</Link></>
+            ) : address === undefined ? (
+              <Connect addressState={[address, setAddress]} trigger={
+                <Link>Connect...</Link>
+              } />
             ) : (
-              'Sign in...'
+              <Link onClick={() => w3m.open()}>Sign in...</Link>
             )}
           </Text>
         </Box>
       </ScrollArea>
 
-      <Flex gap='2' style={{
-        position: 'fixed',
-        right: '10px',
-        top: '5px',
-      }}>
-        <Button radius='full' onClick={async () => {
-          await fetch(`${APIEndpoint}/salts/${address}`, {
-            method: 'POST',
-            headers,
-          })
-        }}>Reset</Button>
-        <Button disabled={['connecting', 'reconnecting'].includes(accountStatus)} radius='full' onClick={() => w3m.open()}>
-          {accountStatus === 'connected' ? (
-            address ? address.slice(0, 6) + '...' : 'Unknown'
-          ) : ['reconnecting', 'connecting'].includes(accountStatus) ? (
-            `Loading...`
-          ) : (
-            'Connect'
-          )}
-        </Button>
-      </Flex>
+      {address === undefined ? (
+        <Connect addressState={[address, setAddress]} trigger={TopRightButton} />
+      ) : (
+        <Configure isConnected={isConnected} isConnecting={isConnecting} addressState={[address, setAddress]} setAddressName={setAddressName} trigger={TopRightButton} />
+      )}
     </>
   )
 }
