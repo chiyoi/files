@@ -3,7 +3,7 @@ import '@radix-ui/themes/styles.css'
 
 export const metadata: Metadata = {
   title: 'Files',
-  description: 'Web temporary file storage.',
+  description: 'Temporary file storage.',
   icons: {
     icon: 'https://files.neko03.moe/favicon.ico',
   },

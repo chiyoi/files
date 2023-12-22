@@ -9,7 +9,7 @@ const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || ""
 const chains = [sepolia, mainnet]
 const metadata = {
   name: 'Files',
-  description: 'Web temporary file storage.',
+  description: 'Temporary file storage.',
   url: 'https://files.neko03.moe',
   icons: ['https://files.neko03.moe/favicon.ico'],
 }
