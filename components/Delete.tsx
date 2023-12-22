@@ -1,11 +1,11 @@
 import { DropdownMenu } from '@radix-ui/themes'
 
 export default function Delete(props: Props) {
-  const { trigger, filename, isSigned, deleteFile, listFiles } = props
+  const { children, filename, isSigned, deleteFile, listFiles } = props
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
-        {trigger}
+        {children}
       </DropdownMenu.Trigger>
       <DropdownMenu.Content align='end'>
         <DropdownMenu.Item disabled={!isSigned} color="red" onClick={() => {
@@ -19,7 +19,7 @@ export default function Delete(props: Props) {
 }
 
 type Props = {
-  trigger: React.ReactNode,
+  children: React.ReactNode,
   filename: string,
   isSigned: boolean,
   deleteFile: (filename: string) => Promise<void>,

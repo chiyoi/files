@@ -1,8 +1,8 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { useTheme } from 'next-themes'
-import { Box, Button, IconButton, ScrollArea, Table, Text, Link } from '@radix-ui/themes'
-import { DotsVerticalIcon } from '@radix-ui/react-icons'
+import { Box, Button, IconButton, ScrollArea, Table, Text, Link, Tooltip } from '@radix-ui/themes'
+import { CopyIcon, DotsVerticalIcon } from '@radix-ui/react-icons'
 import { useWeb3Modal, useWeb3ModalTheme } from '@web3modal/wagmi/react'
 import { useSignMessage, useAccount } from 'wagmi'
 import { z } from 'zod'
@@ -134,7 +134,16 @@ export default function Page() {
     return () => clearInterval(timer)
   }, [uploading])
 
-  const TopRightButton = (
+  const [copyCIDTooltipOpen, setCopyCIDTooltipOpen] = useState(false)
+  const [copyCIDTooltip, setCopyCIDTooltip] = useState('copy')
+  function resetCopyCIDTooltip() {
+    setCopyCIDTooltip('copy')
+  }
+  function setCopyCIDTooltipCopied() {
+    setCopyCIDTooltip('copied')
+  }
+
+  const TopRightButton = () => (
     <Button disabled={isConnecting} radius='full' style={{
       position: 'fixed',
       right: '10px',
@@ -192,14 +201,23 @@ export default function Page() {
                     <Link download href={`${IPFSGatewayEndpoint}/ipfs/${file.cid}?filename=${file.filename}`}>
                       {file.cid}
                     </Link>
+                    <Tooltip delayDuration={0} content={copyCIDTooltip} open={copyCIDTooltipOpen} onOpenChange={v => (setCopyCIDTooltipOpen(v), !v && resetCopyCIDTooltip())}>
+                      <IconButton ml='3' variant='ghost' radius='full' onClick={() => {
+                        navigator.clipboard.writeText(file.cid)
+                        setCopyCIDTooltipCopied()
+                        setCopyCIDTooltipOpen(true)
+                      }}>
+                        <CopyIcon />
+                      </IconButton>
+                    </Tooltip>
                   </Table.Cell>
                   <Table.Cell>{file.filename}</Table.Cell>
                   <Table.Cell>
-                    <Delete filename={file.filename} isSigned={isSigned} deleteFile={deleteFile} listFiles={listFiles} trigger={
+                    <Delete filename={file.filename} isSigned={isSigned} deleteFile={deleteFile} listFiles={listFiles}>
                       <IconButton variant='ghost' radius='full'>
                         <DotsVerticalIcon />
                       </IconButton>
-                    } />
+                    </Delete>
                   </Table.Cell>
                 </Table.Row>
               ))}
@@ -248,9 +266,13 @@ export default function Page() {
       </ScrollArea>
 
       {address === undefined ? (
-        <Connect addressState={[address, setAddress]} trigger={TopRightButton} />
+        <Connect addressState={[address, setAddress]}>
+          <TopRightButton />
+        </Connect>
       ) : (
-        <Configure isConnected={isConnected} isConnecting={isConnecting} isSigned={isSigned} addressState={[address, setAddress]} setAddressName={setAddressName} trigger={TopRightButton} />
+        <Configure isConnected={isConnected} isConnecting={isConnecting} isSigned={isSigned} addressState={[address, setAddress]} setAddressName={setAddressName}>
+          <TopRightButton />
+        </Configure>
       )}
     </>
   )

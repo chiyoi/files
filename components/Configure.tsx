@@ -5,14 +5,14 @@ import { useWeb3Modal } from '@web3modal/wagmi/react'
 import { useState } from 'react'
 
 export default function Configure(props: Props) {
-  const { trigger, isConnected, isConnecting, isSigned, addressState, setAddressName } = props
+  const { children, isConnected, isConnecting, isSigned, addressState, setAddressName } = props
   const [address] = addressState
   const [open, setOpen] = useState(false)
   const w3m = useWeb3Modal()
   return (
     <DropdownMenu.Root open={open} onOpenChange={setOpen}>
       <DropdownMenu.Trigger>
-        {trigger}
+        {children}
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Content align='end'>
@@ -42,7 +42,7 @@ export default function Configure(props: Props) {
 }
 
 type Props = {
-  trigger: React.ReactNode,
+  children: React.ReactNode,
   isConnected: boolean,
   isConnecting: boolean,
   isSigned: boolean,
