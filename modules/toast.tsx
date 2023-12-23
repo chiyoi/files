@@ -1,6 +1,6 @@
 import { Cross2Icon } from '@radix-ui/react-icons'
 import * as Toast from '@radix-ui/react-toast'
-import { Box, Flex, IconButton } from '@radix-ui/themes'
+import { Flex, IconButton } from '@radix-ui/themes'
 import { useState } from 'react'
 
 export default function useToast() {
@@ -26,7 +26,7 @@ export default function useToast() {
           marginTop: 5,
           marginBlock: 5,
         }}>
-          <Toast.Description>{title}</Toast.Description>
+          <Toast.Title>{title}</Toast.Title>
           <Toast.Close asChild style={{
             gridArea: 'action',
           }}>
