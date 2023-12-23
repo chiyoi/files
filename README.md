@@ -1,9 +1,11 @@
 # Files
-[files.neko03.moe](https://files.neko03.moe)
+Temporary file storage: [files.neko03.moe](https://files.neko03.moe)
 
-Web temporary file storage.
+API: [chiyoi/files_api](https://github.com/chiyoi/files_api)\
+Contracts: [chiyoi/files_contracts](https://github.com/chiyoi/files_contracts)
 
 ## Development
-Wallet Connect web3 modal to connect wallet.
+Wallet Connect web3 modal to connect wallet.\
+Wallet client sign message to sign in.
 
-Ethereum sign message to sign in.
+Web page is developed with TypeScript, React, Next.js, and Remix UI, deployed with Cloudflare Pages.
