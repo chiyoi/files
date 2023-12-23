@@ -166,11 +166,13 @@ export default function Page() {
         scrollbars='both'
         onDragOver={e => {
           e.preventDefault()
+          if (!isSigned) return
           setDragOver(true)
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={e => {
           e.preventDefault()
+          if (!isSigned) return
           setDragOver(false)
           const items = e.dataTransfer.items
           for (const item of items) {
