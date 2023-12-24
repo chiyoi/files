@@ -20,7 +20,11 @@ module.exports = (phase, { defaultConfig }) => {
       return [
         {
           source: '/api/:path*',
-          destination: 'http://localhost:8787/api/:path*', // Proxy to Backend
+          destination: 'http://files_api.neko03.workers.dev/api/:path*',
+        },
+        {
+          source: '/ens/:path*',
+          destination: 'http://ens.neko03.workers.dev/ens/:path*',
         },
       ]
     },

@@ -1,18 +1,28 @@
 import SelectAddress from '@/components/SelectAddress'
 import SetAddressName from '@/components/SetAddressName'
-import { DropdownMenu } from '@radix-ui/themes'
+import { Button, DropdownMenu } from '@radix-ui/themes'
 import { useWeb3Modal } from '@web3modal/wagmi/react'
 import { useState } from 'react'
 
 export default function Configure(props: Props) {
-  const { children, isConnected, isConnecting, isSigned, addressState, setAddressName } = props
+  const { isConnected, isConnecting, isSigned, addressState, setAddressName } = props
   const [address] = addressState
   const [open, setOpen] = useState(false)
   const w3m = useWeb3Modal()
   return (
     <DropdownMenu.Root open={open} onOpenChange={setOpen}>
       <DropdownMenu.Trigger>
-        {children}
+        <Button disabled={isConnecting} radius='full' style={{
+          position: 'fixed',
+          right: '10px',
+          top: '5px',
+        }}>
+          {address === undefined ? (
+            'Loading...'
+          ) : (
+            address.slice(0, 6) + '...'
+          )}
+        </Button>
       </DropdownMenu.Trigger>
 
       <DropdownMenu.Content align='end'>
@@ -24,11 +34,11 @@ export default function Configure(props: Props) {
           )}
         </DropdownMenu.Item>
         {!isConnected || address === undefined || !isSigned ? (
-          <SelectAddress closeMenu={() => setOpen(false)} addressState={addressState} trigger={
+          <SelectAddress closeMenu={() => setOpen(false)} addressState={addressState}>
             <DropdownMenu.Item onSelect={e => e.preventDefault()}>
               Change Address
             </DropdownMenu.Item>
-          } />
+          </SelectAddress>
         ) : (
           <SetAddressName closeMenu={() => setOpen(false)} address={address} setAddressName={setAddressName} trigger={
             <DropdownMenu.Item onSelect={e => e.preventDefault()}>
@@ -42,7 +52,6 @@ export default function Configure(props: Props) {
 }
 
 type Props = {
-  children: React.ReactNode,
   isConnected: boolean,
   isConnecting: boolean,
   isSigned: boolean,

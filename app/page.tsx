@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { useTheme } from 'next-themes'
-import { Box, Button, IconButton, ScrollArea, Table, Text, Link, Tooltip } from '@radix-ui/themes'
+import { Box, Button, IconButton, ScrollArea, Table, Text, Link, Tooltip, DropdownMenu } from '@radix-ui/themes'
 import { CopyIcon, DotsVerticalIcon } from '@radix-ui/react-icons'
 import { useWeb3Modal, useWeb3ModalTheme } from '@web3modal/wagmi/react'
 import { useSignMessage, useAccount } from 'wagmi'
@@ -13,6 +13,7 @@ import Configure from '@/components/Configure'
 import SelectAddress from '@/components/SelectAddress'
 
 const APIEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT
+const ENSEndpoint = process.env.NEXT_PUBLIC_END_ENDPOINT
 const IPFSGatewayEndpoint = process.env.NEXT_PUBLIC_IPFS_GATEWAY_ENDPOINT
 
 export default function Page() {
@@ -109,7 +110,7 @@ export default function Page() {
   async function setAddressName(name: string) {
     if (!mounted || address === undefined || headers === undefined) return
     try {
-      const response = await fetch(`${APIEndpoint}/names/${address}`, {
+      const response = await fetch(`${ENSEndpoint}/${address}/name`, {
         method: 'PUT',
         headers,
         body: name,
@@ -142,22 +143,6 @@ export default function Page() {
   function setCopyCIDTooltipCopied() {
     setCopyCIDTooltip('copied')
   }
-
-  const TopRightButton = () => (
-    <Button disabled={isConnecting} radius='full' style={{
-      position: 'fixed',
-      right: '10px',
-      top: '5px',
-    }}>
-      {address !== undefined ? (
-        address.slice(0, 6) + '...'
-      ) : isConnecting ? (
-        `Loading...`
-      ) : (
-        'Connect'
-      )}
-    </Button>
-  )
 
   if (!mounted) return null
   return (
@@ -252,11 +237,11 @@ export default function Page() {
                   }
                 }
                 input.click()
-              }}>Select files...</Link></>
+              }}>Select files...</Link> </>
             ) : address === undefined ? (
-              <><Link onClick={() => w3m.open()}>Sign in...</Link> or <SelectAddress closeMenu={() => void 0} addressState={[address, setAddress]} trigger={
+              <><Link onClick={() => w3m.open()}>Sign in...</Link> or <SelectAddress closeMenu={() => void 0} addressState={[address, setAddress]}>
                 <Link>Look Around...</Link>
-              } /></>
+              </SelectAddress></>
             ) : (
               <Link onClick={() => {
                 if (isConnected && message !== undefined) signMessage({ message })
@@ -268,13 +253,9 @@ export default function Page() {
       </ScrollArea>
 
       {address === undefined ? (
-        <Connect addressState={[address, setAddress]}>
-          <TopRightButton />
-        </Connect>
+        <Connect isConnecting={isConnecting} addressState={[address, setAddress]} />
       ) : (
-        <Configure isConnected={isConnected} isConnecting={isConnecting} isSigned={isSigned} addressState={[address, setAddress]} setAddressName={setAddressName}>
-          <TopRightButton />
-        </Configure>
+        <Configure isConnecting={isConnecting} isConnected={isConnected} isSigned={isSigned} addressState={[address, setAddress]} setAddressName={setAddressName} />
       )}
     </>
   )

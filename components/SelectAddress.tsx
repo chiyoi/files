@@ -1,10 +1,11 @@
 import { Box, Button, Dialog, Flex, Tabs, Text, TextField } from '@radix-ui/themes'
 import { useEffect, useState } from 'react'
+import { isHex } from 'viem'
 
-const APIEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT
+const ENSEndpoint = process.env.NEXT_PUBLIC_END_ENDPOINT
 
 export default function SelectAddress(props: Props) {
-  const { trigger, addressState: [savedAddress, setSavedAddress], closeMenu } = props
+  const { children, addressState: [savedAddress, setSavedAddress], closeMenu } = props
   const [address, setAddress] = useState(savedAddress)
   const [name, setName] = useState<string>()
   const [tab, setTab] = useState<string>('name')
@@ -15,7 +16,7 @@ export default function SelectAddress(props: Props) {
     closeMenu()
     switch (tab) {
     case 'name':
-      const response = await fetch(`${APIEndpoint}/addresses/${name}`)
+      const response = await fetch(`${ENSEndpoint}/${name}/address`)
       if (!response.ok) {
         if (response.status === 404) {
           console.warn('Name not exist.') // TODO: toast
@@ -26,6 +27,10 @@ export default function SelectAddress(props: Props) {
       setSavedAddress(await response.text())
       return
     case 'address':
+      if (address === '') setSavedAddress(undefined)
+      if (!isHex(address)) {
+        console.error('Address should be a hex string like `0x${string}`')
+      }
       setSavedAddress(address)
       return
     }
@@ -37,7 +42,7 @@ export default function SelectAddress(props: Props) {
       setOpen(v)
     }}>
       <Dialog.Trigger>
-        {trigger}
+        {children}
       </Dialog.Trigger>
       <Dialog.Content>
         <Dialog.Title>Select Address</Dialog.Title>
@@ -87,7 +92,7 @@ export default function SelectAddress(props: Props) {
 }
 
 type Props = {
-  trigger: React.ReactNode,
+  children: React.ReactNode,
   closeMenu: () => void,
   addressState: [string | undefined, React.Dispatch<React.SetStateAction<string | undefined>>],
 }
