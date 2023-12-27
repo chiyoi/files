@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Box, Button, IconButton, ScrollArea, Table, Text, Link, Tooltip, DropdownMenu } from '@radix-ui/themes'
 import { CopyIcon, DotsVerticalIcon } from '@radix-ui/react-icons'
@@ -11,75 +11,48 @@ import Connect from '@/components/Connect'
 import Delete from '@/components/Delete'
 import Configure from '@/components/Configure'
 import SelectAddress from '@/components/SelectAddress'
+import { useMounted } from '@/modules'
+import WalletContext from '@/components/WalletContext'
+import { Files, listFiles, useHeaders } from '@/modules/api'
 
-const APIEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT
-const ENSEndpoint = process.env.NEXT_PUBLIC_END_ENDPOINT
-const IPFSGatewayEndpoint = process.env.NEXT_PUBLIC_IPFS_GATEWAY_ENDPOINT
+const API_ENDPOINT = process.env.NEXT_PUBLIC_API_ENDPOINT
+const ENS_ENDPOINT = process.env.NEXT_PUBLIC_END_ENDPOINT
+const IPFS_GATEWAY_ENDPOINT = process.env.NEXT_PUBLIC_IPFS_GATEWAY_ENDPOINT
+
+const MAX_FILE_SIZE = 30 * 1024 * 1024
 
 export default function Page() {
-  const { resolvedTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-  const { setThemeMode } = useWeb3ModalTheme()
-  useEffect(() => setThemeMode(resolvedTheme === 'dark' ? 'dark' : 'light'), [resolvedTheme])
+  const mounted = useMounted()
 
-  const [address, setAddress] = useState<string>()
+  const { address, message, signature } = useContext(WalletContext)
+  const headers = useHeaders(message, signature)
 
-  const w3m = useWeb3Modal()
-  const { address: addressWithCheck, isConnected, status: accountStatus } = useAccount()
-  useEffect(() => {
-    if (!isConnected) return
-    setAddress(addressWithCheck?.toLowerCase())
-  }, [isConnected, addressWithCheck])
-  const isConnecting = accountStatus === 'connecting' || accountStatus === 'reconnecting'
-
-  const message = useMemo(() => {
-    if (!isConnected || address === undefined) return
-    return `Sign into files?\nAddress: ${address}\nTimestamp: ${Date.now()}`
-  }, [isConnected, address])
-
-  const { data: signature, isSuccess: isSigned, signMessage, reset } = useSignMessage()
-  useEffect(() => {
-    if (!mounted || !isConnected || message === undefined) return
-    signMessage({ message })
-    return reset
-  }, [mounted, isConnected, message])
-
-  const headers = useMemo(() => {
-    if (message === undefined || signature === undefined) return
-    const headers = new Headers()
-    headers.set('Authorization', `Signature ${btoa(message)}:${signature}`)
-    return headers
-  }, [message, signature])
+  const [dragOver, setDragOver] = useState(false)
 
   const [files, setFiles] = useState<z.infer<typeof Files>>([])
-  const [dragOver, setDragOver] = useState(false)
-  useEffect(() => {
-    listFiles()
-  }, [mounted, address])
 
   const [listing, setListing] = useState(false)
-  async function listFiles() {
+  useEffect(() => {
     if (!mounted || address === undefined) return
     setListing(true)
-    try {
-      const response = await fetch(`${APIEndpoint}/files/${address}`)
-      if (!response.ok) console.error(`List files error: ${await response.text()}`)
-      const files = Files.parse(await response.json())
-      setFiles(files)
-    } catch (error) {
-      setFiles([])
-      console.error(error)
-    }
-    setListing(false)
-  }
+    listFiles(address)
+      .then(setFiles)
+      .catch(error => console.error(error)) // TODO: toast
+      .finally(() => setListing(false))
+  }, [mounted, address])
 
+
+  // Working
   const [uploading, setUploading] = useState(false)
   async function putFile(file: File) {
-    if (!mounted || address === undefined || !isSigned) return
+    if (!mounted || address === undefined || headers === undefined) return
+    if (file.size > MAX_FILE_SIZE) {
+      console.error('Files is designed for small files.')
+      return
+    }
     setUploading(true)
     try {
-      const response = await fetch(`${APIEndpoint}/files/${address}/${file.name}`, {
+      const response = await fetch(`${API_ENDPOINT}/files/${address}/${file.name}`, {
         method: 'PUT',
         headers,
         body: file,
@@ -96,7 +69,7 @@ export default function Page() {
     if (!mounted || address === undefined || !isSigned) return
     setDeleting(true)
     try {
-      const response = await fetch(`${APIEndpoint}/files/${address}/${filename}`, {
+      const response = await fetch(`${API_ENDPOINT}/files/${address}/${filename}`, {
         method: 'DELETE',
         headers,
       })
@@ -110,7 +83,7 @@ export default function Page() {
   async function setAddressName(name: string) {
     if (!mounted || address === undefined || headers === undefined) return
     try {
-      const response = await fetch(`${ENSEndpoint}/${address}/name`, {
+      const response = await fetch(`${ENS_ENDPOINT}/${address}/name`, {
         method: 'PUT',
         headers,
         body: name,
@@ -185,7 +158,7 @@ export default function Page() {
                 <Table.Row key={file.cid}>
                   <Table.Cell></Table.Cell>
                   <Table.Cell>
-                    <Link download href={`${IPFSGatewayEndpoint}/ipfs/${file.cid}?filename=${file.filename}`}>
+                    <Link download href={`${IPFS_GATEWAY_ENDPOINT}/ipfs/${file.cid}?filename=${file.filename}`}>
                       {file.cid}
                     </Link>
                     <Tooltip delayDuration={0} content={copyCIDTooltip} open={copyCIDTooltipOpen} onOpenChange={v => (setCopyCIDTooltipOpen(v), !v && resetCopyCIDTooltip())}>
@@ -237,7 +210,7 @@ export default function Page() {
                   }
                 }
                 input.click()
-              }}>Select files...</Link> </>
+              }}>Select files...</Link></>
             ) : address === undefined ? (
               <><Link onClick={() => w3m.open()}>Sign in...</Link> or <SelectAddress closeMenu={() => void 0} addressState={[address, setAddress]}>
                 <Link>Look Around...</Link>
@@ -260,8 +233,3 @@ export default function Page() {
     </>
   )
 }
-
-const Files = z.object({
-  cid: z.string(),
-  filename: z.string(),
-}).array()

@@ -1,10 +1,14 @@
+import WalletContext from '@/components/WalletContext'
+import { setAddressName, useHeaders } from '@/modules/api'
 import { Button, Dialog, Flex, Text, TextField } from '@radix-ui/themes'
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 
 const APIEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT
 
 export default function SetAddressName(props: Props) {
-  const { trigger, address, setAddressName, closeMenu } = props
+  const { children, closeMenu } = props
+  const { address, message, signature } = useContext(WalletContext)
+  const headers = useHeaders(message, signature)
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [nameFetched, setNameFetched] = useState('')
@@ -19,7 +23,7 @@ export default function SetAddressName(props: Props) {
   function handleSave() {
     setOpen(false)
     closeMenu()
-    if (name !== '') setAddressName(name)
+    if (headers !== undefined && address !== undefined && name !== '') setAddressName(headers, address, name)
   }
 
   return (
@@ -28,7 +32,7 @@ export default function SetAddressName(props: Props) {
       setOpen(v)
     }}>
       <Dialog.Trigger>
-        {trigger}
+        {children}
       </Dialog.Trigger>
       <Dialog.Content>
         <Dialog.Title>Set Address Name</Dialog.Title>
@@ -61,8 +65,6 @@ export default function SetAddressName(props: Props) {
 }
 
 type Props = {
-  trigger: React.ReactNode,
-  address: string,
+  children: React.ReactNode,
   closeMenu: () => void,
-  setAddressName: (name: string) => void,
 }

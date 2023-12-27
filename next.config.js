@@ -20,7 +20,7 @@ module.exports = (phase, { defaultConfig }) => {
       return [
         {
           source: '/api/:path*',
-          destination: 'http://files_api.neko03.workers.dev/api/:path*',
+          destination: 'http://localhost:8787/api/:path*',
         },
         {
           source: '/ens/:path*',
