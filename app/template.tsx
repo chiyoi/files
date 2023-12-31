@@ -45,6 +45,16 @@ export default function Template({ children }: { children: ReactNode }) {
     signMessage({ message })
     return reset
   }, [mounted, isConnected, message])
+  useEffect(() => {
+    (async () => {
+      if (signature === undefined) return
+      // Working
+      console.debug(`Hello, ${address}.`)
+      const pastDue = Number((await (await fetch(`/api/${address}/bills/past_due`)).text()))
+      if (pastDue !== 0) console.debug(`You have past-due bill of Ξ${pastDue}e-18. Pay it before you can make any change.`)
+      else console.debug(`Your current period bill is Ξ${await (await fetch(`/api/${address}/bills/current_period`)).text()}e-18.`)
+    })()
+  }, [signature])
 
   return (
     <ThemeProvider attribute='class'>
