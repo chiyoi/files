@@ -4,11 +4,10 @@ import { createWeb3Modal, defaultWagmiConfig, useWeb3Modal, useWeb3ModalTheme } 
 import { Flex, Theme } from "@radix-ui/themes"
 import { sepolia, mainnet } from 'viem/chains'
 import { WagmiConfig, useAccount, useSignMessage } from 'wagmi'
-import WalletContext, { Wallet } from '@/components/WalletContext'
+import AccountContext from '@/components/AccountContext'
 import { ReactNode, useEffect, useMemo, useState } from 'react'
-import Connect from '@/components/Connect'
-import Configure from '@/components/Configure'
-import { useMounted } from '@/modules'
+import Account from '@/components/Account'
+import { useMounted } from '@/modules/useMounted'
 
 const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || ""
 const chains = [sepolia, mainnet]
@@ -28,14 +27,12 @@ export default function Template({ children }: { children: ReactNode }) {
   useEffect(() => setThemeMode(resolvedTheme === 'dark' ? 'dark' : 'light'), [resolvedTheme])
 
   const [address, setAddress] = useState<string>()
-
-  const w3m = useWeb3Modal()
   const { address: addressWithCheck, isConnected, status: accountStatus } = useAccount()
   useEffect(() => {
     if (!isConnected) return
     setAddress(addressWithCheck?.toLowerCase())
   }, [isConnected, addressWithCheck])
-  const isConnecting = accountStatus === 'connecting' || accountStatus === 'reconnecting'
+  const connecting = accountStatus === 'connecting' || accountStatus === 'reconnecting'
 
   const message = useMemo(() => {
     if (!isConnected || address === undefined) return
@@ -49,24 +46,15 @@ export default function Template({ children }: { children: ReactNode }) {
     return reset
   }, [mounted, isConnected, message])
 
-  const [wallet, setWallet] = useState<Wallet>({})
-  useEffect(() => {
-    setWallet({ setWallet })
-  }, [])
   return (
     <ThemeProvider attribute='class'>
       <WagmiConfig config={wagmiConfig}>
         <Theme accentColor='pink'>
           <Flex style={{ height: '100vh', backgroundColor: 'var(--accent-2)' }}>
-            <WalletContext.Provider value={wallet}>
+            <AccountContext.Provider value={{ connecting, address, message, signature, setAddress, signMessage }}>
               {children}
-            </WalletContext.Provider>
-
-            {address === undefined ? (
-              <Connect isConnecting={isConnecting} addressState={[address, setAddress]} />
-            ) : (
-              <Configure isConnecting={isConnecting} isConnected={isConnected} isSigned={signature !== undefined} addressState={[address, setAddress]} />
-            )}
+            </AccountContext.Provider>
+            <Account isConnecting={connecting} isConnected={isConnected} isSigned={signature !== undefined} addressState={[address, setAddress]} />
           </Flex>
         </Theme>
       </WagmiConfig>

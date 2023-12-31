@@ -1,5 +1,5 @@
-import WalletContext from '@/components/WalletContext'
-import { setAddressName, useHeaders } from '@/modules/api'
+import WalletContext from '@/components/AccountContext'
+import { setAddressName, useHeaders } from '@/modules/requests'
 import { Button, Dialog, Flex, Text, TextField } from '@radix-ui/themes'
 import { useContext, useEffect, useState } from 'react'
 

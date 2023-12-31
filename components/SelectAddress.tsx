@@ -13,7 +13,7 @@ export default function SelectAddress(props: Props) {
 
   async function handleSave() {
     setOpen(false)
-    closeMenu()
+    closeMenu?.()
     switch (tab) {
     case 'name':
       const response = await fetch(`${ENSEndpoint}/${name}/address`)
@@ -38,7 +38,7 @@ export default function SelectAddress(props: Props) {
 
   return (
     <Dialog.Root open={open} onOpenChange={v => {
-      !v && closeMenu()
+      !v && closeMenu?.()
       setOpen(v)
     }}>
       <Dialog.Trigger>
@@ -93,6 +93,6 @@ export default function SelectAddress(props: Props) {
 
 type Props = {
   children: React.ReactNode,
-  closeMenu: () => void,
+  closeMenu?: () => void,
   addressState: [string | undefined, React.Dispatch<React.SetStateAction<string | undefined>>],
 }

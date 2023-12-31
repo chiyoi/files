@@ -1,16 +1,22 @@
+import AccountContext from '@/components/AccountContext'
+import { useHeaders } from '@/modules/requests'
 import { DropdownMenu } from '@radix-ui/themes'
+import { Dispatch, SetStateAction, useContext } from 'react'
 
 export default function Delete(props: Props) {
-  const { children, filename, isSigned, deleteFile, listFiles } = props
+  const { children, filename, handleDeleteFile } = props
+
+  const { address, message, signature } = useContext(AccountContext)
+  const headers = useHeaders(message, signature)
+  const signed = headers !== undefined
+
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
         {children}
       </DropdownMenu.Trigger>
       <DropdownMenu.Content align='end'>
-        <DropdownMenu.Item disabled={!isSigned} color="red" onClick={() => {
-          deleteFile(filename).then(listFiles)
-        }}>
+        <DropdownMenu.Item disabled={!signed} color="red" onClick={() => handleDeleteFile(filename)}>
           Delete
         </DropdownMenu.Item>
       </DropdownMenu.Content>
@@ -21,7 +27,5 @@ export default function Delete(props: Props) {
 type Props = {
   children: React.ReactNode,
   filename: string,
-  isSigned: boolean,
-  deleteFile: (filename: string) => Promise<void>,
-  listFiles: () => Promise<void>,
+  handleDeleteFile: (filename: string) => void,
 }

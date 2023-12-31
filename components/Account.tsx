@@ -4,7 +4,7 @@ import { Button, DropdownMenu } from '@radix-ui/themes'
 import { useWeb3Modal } from '@web3modal/wagmi/react'
 import { useState } from 'react'
 
-export default function Configure(props: Props) {
+export default function Account(props: Props) {
   const { isConnected, isConnecting, isSigned, addressState } = props
   const [address] = addressState
   const [open, setOpen] = useState(false)
@@ -18,6 +18,8 @@ export default function Configure(props: Props) {
           top: '5px',
         }}>
           {address === undefined ? (
+            'Connect'
+          ) : isConnecting ? (
             'Loading...'
           ) : (
             address.slice(0, 6) + '...'
@@ -36,7 +38,11 @@ export default function Configure(props: Props) {
         {!isConnected || address === undefined || !isSigned ? (
           <SelectAddress closeMenu={() => setOpen(false)} addressState={addressState}>
             <DropdownMenu.Item onSelect={e => e.preventDefault()}>
-              Change Address
+              {address === undefined ? (
+                'Look Around'
+              ) : (
+                'Change Address'
+              )}
             </DropdownMenu.Item>
           </SelectAddress>
         ) : (

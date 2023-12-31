@@ -20,10 +20,22 @@ export async function listFiles(address: string) {
   return Files.parse(await response.json())
 }
 
-export const Files = z.object({
-  cid: z.string(),
-  filename: z.string(),
-}).array()
+export async function putFile(headers: HeadersInit, address: string, file: File,) {
+  const response = await fetch(`${API_ENDPOINT}/files/${address}/${file.name}`, {
+    method: 'PUT',
+    headers,
+    body: file,
+  })
+  if (!response.ok) throw new Error(`Put ${file.name} error: ${await response.text()}`)
+}
+
+export async function deleteFile(headers: HeadersInit, address: string, filename: string) {
+  const response = await fetch(`${API_ENDPOINT}/files/${address}/${filename}`, {
+    method: 'DELETE',
+    headers,
+  })
+  if (!response.ok) throw new Error(`Delete ${filename} error: ${await response.text()}`)
+}
 
 export async function setAddressName(headers: HeadersInit, address: string, name: string) {
   const response = await fetch(`${ENS_ENDPOINT}/${address}/name`, {
@@ -33,3 +45,8 @@ export async function setAddressName(headers: HeadersInit, address: string, name
   })
   if (!response.ok) throw new Error(`Set address name error: ${await response.text()}`)
 }
+
+export const Files = z.object({
+  cid: z.string(),
+  filename: z.string(),
+}).array()
