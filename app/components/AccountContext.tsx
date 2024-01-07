@@ -1,19 +1,16 @@
-'use client'
-import { ThemeProvider, useTheme } from "next-themes"
-import { createWeb3Modal, defaultWagmiConfig, useWeb3Modal, useWeb3ModalTheme } from '@web3modal/wagmi/react'
-import { Flex, Theme } from "@radix-ui/themes"
+import { createContext, useContext, useState } from 'react'
+import { useTheme } from "next-themes"
+import { createWeb3Modal, defaultWagmiConfig, useWeb3ModalTheme } from '@web3modal/wagmi/react'
 import { sepolia, mainnet } from 'viem/chains'
-import { WagmiConfig, useAccount, useSignMessage } from 'wagmi'
-import AccountContext from '@/components/AccountContext'
-import { ReactNode, useEffect, useMemo, useState } from 'react'
-import Account from '@/components/Account'
-import { useMounted } from '@/modules/hooks'
-import { getCurrentPeriodBill, getPastDueBill } from '@/modules/api-requests'
-import PastDueAlert from '@/components/PastDueAlert'
-import { useToast } from '@/modules/toast'
-import { getName } from '@/modules/ens-requests'
+import { useAccount as useWagmiAccount, useSignMessage } from 'wagmi'
+import { ReactNode, useEffect, useMemo } from 'react'
+import Account from '@/app/components/Account'
+import { getCurrentPeriodBill, getPastDueBill } from '@/app/lib/api-requests'
+import PastDueAlert from '@/app/components/PastDueAlert'
+import { getName } from '@/app/lib/ens-requests'
+import { useToast } from '@/app/components/ToastContext'
 
-const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || ""
+const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID ?? ''
 const chains = [sepolia, mainnet]
 const wagmiConfig = defaultWagmiConfig({
   chains, projectId, metadata: {
@@ -25,18 +22,20 @@ const wagmiConfig = defaultWagmiConfig({
 })
 createWeb3Modal({ wagmiConfig, projectId, chains, defaultChain: sepolia, themeVariables: { '--w3m-accent': 'pink' } })
 
+const AccountContext = createContext<AccountConfigure>({ connecting: false, addressState: [undefined, () => { }], signMessage: () => { }, logout: () => { } })
+export const useAccount = () => useContext(AccountContext)
+
 export default (props: Props) => {
   const { children } = props
-  const [info, toast] = useToast()
+  const toast = useToast()
 
-  const mounted = useMounted()
   const { resolvedTheme } = useTheme()
   const { setThemeMode } = useWeb3ModalTheme()
   useEffect(() => setThemeMode(resolvedTheme === 'dark' ? 'dark' : 'light'), [resolvedTheme])
 
   const addressState = useState<`0x${string}`>()
   const [address, setAddress] = addressState
-  const { address: addressWithCheck, isConnected, status: accountStatus } = useAccount()
+  const { address: addressWithCheck, isConnected, status: accountStatus } = useWagmiAccount()
   useEffect(() => {
     if (!isConnected) return
     setAddress(addressWithCheck?.toLowerCase() as `0x${string}`)
@@ -50,10 +49,10 @@ export default (props: Props) => {
 
   const { data: signature, signMessage, reset } = useSignMessage()
   useEffect(() => {
-    if (!mounted || !isConnected || message === undefined) return
+    if (!isConnected || message === undefined) return
     signMessage({ message })
     return reset
-  }, [mounted, isConnected, message])
+  }, [isConnected, message])
 
   const [pastDueAmount, setPastDueAmount] = useState(0n)
   const showPastDueAlertState = useState(false)
@@ -67,10 +66,10 @@ export default (props: Props) => {
         setShowPastDueAlert(true)
       } else {
         const name = await getName(address)
-        info(`Hello, ${name || address}.`)
+        toast(`Hello, ${name || address}.`)
         await new Promise(resolve => { setTimeout(resolve, 3000) })
         const bill = await getCurrentPeriodBill(address)
-        info(`Your current bill is Ξ${(Number(bill.amount) / 1e18).toFixed(18)}.`)
+        toast(`Your current bill is Ξ${(Number(bill.amount) / 1e18).toFixed(18)}.`)
       }
     })()
   }, [signature])
@@ -80,11 +79,21 @@ export default (props: Props) => {
       {children}
       <Account isConnecting={connecting} isConnected={isConnected} isSigned={signature !== undefined} addressState={addressState} />
       <PastDueAlert openState={showPastDueAlertState} amount={pastDueAmount} />
-      {toast}
     </AccountContext.Provider>
   )
 }
 
 type Props = {
-  children: React.ReactNode,
+  children: ReactNode,
+}
+
+export type AccountConfigure = {
+  addressState: ReturnType<typeof useState<`0x${string}`>>,
+  connecting: boolean,
+
+  message?: string,
+  signature?: string,
+
+  signMessage: (args?: { message: string }) => void,
+  logout: () => void,
 }

@@ -10,7 +10,7 @@ module.exports = (phase, { defaultConfig }) => {
     },
     images: {
       loader: 'custom',
-      loaderFile: './modules/imageLoader.js',
+      loaderFile: './imageLoader.js',
     },
   }
 

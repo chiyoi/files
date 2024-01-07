@@ -1,22 +1,27 @@
-import { resolveName } from '@/modules/ens-requests'
+import { useToast } from '@/app/components/ToastContext'
+import { resolveName } from '@/app/lib/ens-requests'
 import { Box, Button, Dialog, Flex, Tabs, Text, TextField } from '@radix-ui/themes'
-import { useEffect, useState } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import { isHex } from 'viem'
 
 export default (props: Props) => {
   const { children, addressState: [savedAddress, setSavedAddress], closeMenu } = props
   const [address, setAddress] = useState(savedAddress as string)
   const [name, setName] = useState<string>()
-  const [tab, setTab] = useState<string>('name')
+  const [tab, setTab] = useState<'name' | 'address'>('name')
   const [open, setOpen] = useState(false)
+  const toast = useToast()
 
   const handleSave = async () => {
     setOpen(false)
     closeMenu?.()
-    setSavedAddress({
-      'name': name !== undefined ? await resolveName(name) : undefined,
-      'address': isHex(address) ? address : undefined,
-    }[tab])
+    setSavedAddress(
+      tab === 'address' ? (
+        isHex(address) ? address : (toast('Address should be hex~'), undefined)
+      ) : (
+        name !== undefined ? await resolveName(name) : (toast('Enter a name~'), undefined)
+      )
+    )
   }
 
   return (
@@ -33,7 +38,7 @@ export default (props: Props) => {
           Select an address (or a name if registered) to watch.
         </Dialog.Description>
 
-        <Tabs.Root value={tab} onValueChange={value => setTab(value)}>
+        <Tabs.Root value={tab} onValueChange={value => setTab(value === 'address' ? 'address' : 'name')}>
           <Tabs.List>
             <Tabs.Trigger value="name">Name</Tabs.Trigger>
             <Tabs.Trigger value="address">Address</Tabs.Trigger>
@@ -53,9 +58,7 @@ export default (props: Props) => {
               mb='4'
               placeholder='Enter the address to watch...'
               value={address}
-              onChange={e => {
-                const address = setAddress(e.target.value)
-              }}
+              onChange={e => setAddress(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
             />
           </Tabs.Content>
@@ -77,7 +80,7 @@ export default (props: Props) => {
 }
 
 type Props = {
-  children: React.ReactNode,
-  closeMenu?: () => void,
+  children: ReactNode,
   addressState: ReturnType<typeof useState<`0x${string}`>>,
+  closeMenu?: () => void,
 }

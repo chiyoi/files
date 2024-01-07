@@ -5,7 +5,8 @@ import { Flex, Theme } from "@radix-ui/themes"
 import { sepolia, mainnet } from 'viem/chains'
 import { WagmiConfig } from 'wagmi'
 import { ReactNode } from 'react'
-import AccountTemplate from '@/components/AccountTemplate'
+import AccountContext from '@/app/components/AccountContext'
+import ToastContext from '@/app/components/ToastContext'
 
 const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || ""
 const chains = [sepolia, mainnet]
@@ -25,9 +26,11 @@ export default (props: Props) => {
       <WagmiConfig config={wagmiConfig}>
         <Theme accentColor='pink'>
           <Flex style={{ height: '100vh', backgroundColor: 'var(--accent-2)' }}>
-            <AccountTemplate>
-              {children}
-            </AccountTemplate>
+            <ToastContext>
+              <AccountContext>
+                {children}
+              </AccountContext>
+            </ToastContext>
           </Flex>
         </Theme>
       </WagmiConfig>

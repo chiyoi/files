@@ -1,5 +1,5 @@
 'use client'
-import { getName } from '@/modules/ens-requests'
+import { getName } from '@/app/lib/ens-requests'
 import { useEffect, useMemo, useState } from 'react'
 
 export function useMounted() {

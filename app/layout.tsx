@@ -17,7 +17,7 @@ export const viewport: Viewport = {
   ],
 }
 
-export default function RootLayout(props: Props) {
+export default (props: Props) => {
   const { children } = props
   return (
     <html lang="en">

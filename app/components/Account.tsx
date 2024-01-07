@@ -1,5 +1,5 @@
-import SelectAddress from '@/components/SelectAddress'
-import SetAddressName from '@/components/SetAddressName'
+import SelectAddress from '@/app/components/SelectAddress'
+import SetAddressName from '@/app/components/SetAddressName'
 import { Button, DropdownMenu } from '@radix-ui/themes'
 import { useWeb3Modal } from '@web3modal/wagmi/react'
 import { useState } from 'react'

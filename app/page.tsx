@@ -4,12 +4,13 @@ import { Box, IconButton, ScrollArea, Table, Text, Link, Tooltip } from '@radix-
 import { CopyIcon, DotsVerticalIcon } from '@radix-ui/react-icons'
 import { useWeb3Modal } from '@web3modal/wagmi/react'
 import { z } from 'zod'
-import { FontHachiMaruPop } from '@/modules/fonts'
-import Delete from '@/components/Delete'
-import SelectAddress from '@/components/SelectAddress'
-import { useAuthorization, useMounted } from '@/modules/hooks'
-import AccountContext from '@/components/AccountContext'
-import { Files, deleteFile, listFiles, putFile } from '@/modules/api-requests'
+import { FontHachiMaruPop } from '@/app/lib/fonts'
+import Delete from '@/app/components/Delete'
+import SelectAddress from '@/app/components/SelectAddress'
+import { useAuthorization, useMounted } from '@/app/lib/hooks'
+import AccountContext, { useAccount } from '@/app/components/AccountContext'
+import { Files, deleteFile, listFiles, putFile } from '@/app/lib/api-requests'
+import { useToast } from '@/app/components/ToastContext'
 
 const IPFS_GATEWAY_ENDPOINT = process.env.NEXT_PUBLIC_IPFS_GATEWAY_ENDPOINT
 
@@ -17,16 +18,16 @@ const MAX_FILE_SIZE = 30 * 1024 * 1024
 
 export default () => {
   const w3m = useWeb3Modal()
-  const mounted = useMounted()
+  const toast = useToast()
 
-  const { connecting, addressState: [address, setAddress], message, signature, signMessage } = useContext(AccountContext)
+  const { connecting, addressState: [address, setAddress], message, signature, signMessage } = useAccount()
   const connected = address !== undefined && message !== undefined
   const authorization = useAuthorization(message, signature)
   const signed = authorization !== undefined
 
   const [listing, setListing] = useState(false)
   const handleListFiles = () => {
-    if (!mounted || !connected) return
+    if (!connected) return
     setListing(true)
     listFiles(address)
       .then(setFiles)
@@ -36,7 +37,7 @@ export default () => {
 
   const [uploading, setUploading] = useState(false)
   const handlePutFile = (file: File) => {
-    if (!mounted || !connected || !signed) return
+    if (!connected || !signed) return
     if (file.size > MAX_FILE_SIZE) {
       console.error('Files is designed for small files.')
       return
@@ -50,7 +51,7 @@ export default () => {
 
   const [deleting, setDeleting] = useState(false)
   const handleDeleteFile = (filename: string) => {
-    if (!mounted || !connected || !signed) return
+    if (!connected || !signed) return
     setDeleting(true)
     deleteFile(address, filename, authorization)
       .then(handleListFiles)
@@ -60,7 +61,7 @@ export default () => {
 
   const [dragOver, setDragOver] = useState(false)
   const [files, setFiles] = useState<z.infer<typeof Files>>([])
-  useEffect(handleListFiles, [mounted, address])
+  useEffect(handleListFiles, [address])
 
   const [loadIndicator, setLoadIndicator] = useState('...')
   useEffect(() => {
@@ -81,8 +82,8 @@ export default () => {
   const resetCopyCIDTooltip = () => setCopyCIDTooltip('copy')
   const setCopyCIDTooltipCopied = () => setCopyCIDTooltip('copied')
 
-  if (!mounted) return null
-  return (
+  const mounted = useMounted()
+  return mounted && (
     <ScrollArea type='auto'
       scrollbars='both'
       onDragOver={e => {
@@ -102,7 +103,7 @@ export default () => {
             const file = item.getAsFile()
             if (file instanceof File) handlePutFile(file)
           } else if (entry?.isDirectory) {
-            console.error('Directory is not supported.') // TODO: Add toast
+            toast('Directory is not supported.')
           }
         }
       }}>

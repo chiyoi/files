@@ -1,20 +1,22 @@
-import AccountContext from '@/components/AccountContext'
-import { useNameRegistered } from '@/modules/hooks'
+import { useAccount } from '@/app/components/AccountContext'
+import { useMounted, useNameRegistered } from '@/app/lib/hooks'
 import { AlertDialog, Button, Flex, Text } from '@radix-ui/themes'
-import { useContext } from 'react'
+import { Dispatch, SetStateAction } from 'react'
 
 export default (props: Props) => {
   const { openState: [open, setOpen], amount, } = props
-  const { addressState: [address], logout } = useContext(AccountContext)
+  const { addressState: [address], logout } = useAccount()
   const name = useNameRegistered(address)
-  return (
+  const mounted = useMounted()
+  return mounted && (
     <AlertDialog.Root open={open} onOpenChange={setOpen}>
       <AlertDialog.Content>
-        <AlertDialog.Title>Welcome</AlertDialog.Title>
+        <AlertDialog.Title>Alert</AlertDialog.Title>
         <AlertDialog.Description size='2' mb='3'>
-          Hello, {name || address}
+          Hello, {name || address}.
+          You have past-due bill of Ξ{(Number(amount) / 1e18).toFixed(18)}.
+          Pay it before you can make any change.
         </AlertDialog.Description>
-        <Text as='div' mb='4'>You have past-due bill of Ξ{(Number(amount) / 1e18).toFixed(18)}. Pay it before you can make any change.</Text>
         <Flex gap='3' justify='end'>
           <AlertDialog.Action>
             <Button variant='soft' color='red' onClick={logout}>
@@ -28,11 +30,11 @@ export default (props: Props) => {
           </AlertDialog.Cancel>
         </Flex>
       </AlertDialog.Content>
-    </AlertDialog.Root>
+    </AlertDialog.Root >
   )
 }
 
 type Props = {
-  openState: [boolean, React.Dispatch<boolean>],
+  openState: [boolean, Dispatch<SetStateAction<boolean>>],
   amount: bigint,
 }

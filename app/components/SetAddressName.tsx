@@ -1,23 +1,26 @@
-import AccountContext from '@/components/AccountContext'
-import { useAuthorization, useNameRegistered } from '@/modules/hooks'
-import { setName as setAddressName } from '@/modules/ens-requests'
+import { useAccount } from '@/app/components/AccountContext'
+import { useAuthorization, useNameRegistered } from '@/app/lib/hooks'
+import { setName as setAddressName } from '@/app/lib/ens-requests'
 import { Button, Dialog, Flex, Text, TextField } from '@radix-ui/themes'
-import { useContext, useState } from 'react'
+import { useState } from 'react'
+import { useToast } from '@/app/components/ToastContext'
 
 export default (props: Props) => {
   const { children, closeMenu } = props
-  const { addressState: [address], message, signature } = useContext(AccountContext)
+  const { addressState: [address], message, signature } = useAccount()
   const authorization = useAuthorization(message, signature)
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const nameRegistered = useNameRegistered(address)
-  console.debug(address, message)
+  const toast = useToast()
 
   const handleSave = () => {
     setOpen(false)
     closeMenu()
+    console.debug(authorization, address, name)
     if (authorization !== undefined && address !== undefined && name !== '')
       setAddressName(address, name, authorization)
+        .then(() => toast('Name set~'))
   }
 
   return (
@@ -35,7 +38,7 @@ export default (props: Props) => {
         </Dialog.Description>
         <Text as='div' mb='3'>Your address is {address}</Text>
         {nameRegistered !== '' && (
-          <Text as='div' mb='3'>Address name is "{nameRegistered}"</Text>
+          <Text as='div' mb='3'>Current name is "{nameRegistered}"</Text>
         )}
         <TextField.Input mb='4'
           placeholder='Enter a name...'
