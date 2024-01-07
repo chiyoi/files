@@ -1,39 +1,22 @@
+import { resolveName } from '@/modules/ens-requests'
 import { Box, Button, Dialog, Flex, Tabs, Text, TextField } from '@radix-ui/themes'
 import { useEffect, useState } from 'react'
 import { isHex } from 'viem'
 
-const ENSEndpoint = process.env.NEXT_PUBLIC_END_ENDPOINT
-
-export default function SelectAddress(props: Props) {
+export default (props: Props) => {
   const { children, addressState: [savedAddress, setSavedAddress], closeMenu } = props
-  const [address, setAddress] = useState(savedAddress)
+  const [address, setAddress] = useState(savedAddress as string)
   const [name, setName] = useState<string>()
   const [tab, setTab] = useState<string>('name')
   const [open, setOpen] = useState(false)
 
-  async function handleSave() {
+  const handleSave = async () => {
     setOpen(false)
     closeMenu?.()
-    switch (tab) {
-    case 'name':
-      const response = await fetch(`${ENSEndpoint}/${name}/address`)
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.warn('Name not exist.') // TODO: toast
-          return
-        }
-        console.error(`Resolve name error: ${await response.text()}`)
-      }
-      setSavedAddress(await response.text())
-      return
-    case 'address':
-      if (address === '') setSavedAddress(undefined)
-      if (!isHex(address)) {
-        console.error('Address should be a hex string like `0x${string}`')
-      }
-      setSavedAddress(address)
-      return
-    }
+    setSavedAddress({
+      'name': name !== undefined ? await resolveName(name) : undefined,
+      'address': isHex(address) ? address : undefined,
+    }[tab])
   }
 
   return (
@@ -70,7 +53,9 @@ export default function SelectAddress(props: Props) {
               mb='4'
               placeholder='Enter the address to watch...'
               value={address}
-              onChange={e => setAddress(e.target.value)}
+              onChange={e => {
+                const address = setAddress(e.target.value)
+              }}
               onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
             />
           </Tabs.Content>
@@ -94,5 +79,5 @@ export default function SelectAddress(props: Props) {
 type Props = {
   children: React.ReactNode,
   closeMenu?: () => void,
-  addressState: [string | undefined, React.Dispatch<React.SetStateAction<string | undefined>>],
+  addressState: ReturnType<typeof useState<`0x${string}`>>,
 }

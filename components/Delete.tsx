@@ -1,14 +1,14 @@
 import AccountContext from '@/components/AccountContext'
-import { useHeaders } from '@/modules/requests'
+import { useAuthorization } from '@/modules/hooks'
 import { DropdownMenu } from '@radix-ui/themes'
-import { Dispatch, SetStateAction, useContext } from 'react'
+import { useContext } from 'react'
 
 export default function Delete(props: Props) {
   const { children, filename, handleDeleteFile } = props
 
-  const { address, message, signature } = useContext(AccountContext)
-  const headers = useHeaders(message, signature)
-  const signed = headers !== undefined
+  const { message, signature } = useContext(AccountContext)
+  const authorization = useAuthorization(message, signature)
+  const signed = authorization !== undefined
 
   return (
     <DropdownMenu.Root>

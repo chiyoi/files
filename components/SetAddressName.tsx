@@ -1,29 +1,23 @@
-import WalletContext from '@/components/AccountContext'
-import { setAddressName, useHeaders } from '@/modules/requests'
+import AccountContext from '@/components/AccountContext'
+import { useAuthorization, useNameRegistered } from '@/modules/hooks'
+import { setName as setAddressName } from '@/modules/ens-requests'
 import { Button, Dialog, Flex, Text, TextField } from '@radix-ui/themes'
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useState } from 'react'
 
-const APIEndpoint = process.env.NEXT_PUBLIC_API_ENDPOINT
-
-export default function SetAddressName(props: Props) {
+export default (props: Props) => {
   const { children, closeMenu } = props
-  const { address, message, signature } = useContext(WalletContext)
-  const headers = useHeaders(message, signature)
+  const { addressState: [address], message, signature } = useContext(AccountContext)
+  const authorization = useAuthorization(message, signature)
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
-  const [nameFetched, setNameFetched] = useState('')
-  useEffect(() => {
-    (async () => {
-      const response = await fetch(`${APIEndpoint}/names/${address}`)
-      if (!response.ok) console.error(`Fetch address name error: ${await response.text()}`)
-      setNameFetched(await response.text())
-    })()
-  }, [])
+  const nameRegistered = useNameRegistered(address)
+  console.debug(address, message)
 
-  function handleSave() {
+  const handleSave = () => {
     setOpen(false)
     closeMenu()
-    if (headers !== undefined && address !== undefined && name !== '') setAddressName(headers, address, name)
+    if (authorization !== undefined && address !== undefined && name !== '')
+      setAddressName(address, name, authorization)
   }
 
   return (
@@ -39,9 +33,9 @@ export default function SetAddressName(props: Props) {
         <Dialog.Description size='2' mb='3'>
           Register a name for your address.
         </Dialog.Description>
-        <Text as='div'>Your address is {address}</Text>
-        {nameFetched !== '' && (
-          <Text as='div' mb='3'>Address name is "{nameFetched}"</Text>
+        <Text as='div' mb='3'>Your address is {address}</Text>
+        {nameRegistered !== '' && (
+          <Text as='div' mb='3'>Address name is "{nameRegistered}"</Text>
         )}
         <TextField.Input mb='4'
           placeholder='Enter a name...'

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import '@radix-ui/themes/styles.css'
+import { ReactNode } from 'react'
 
 export const metadata: Metadata = {
   title: 'Files',
@@ -16,7 +17,8 @@ export const viewport: Viewport = {
   ],
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout(props: Props) {
+  const { children } = props
   return (
     <html lang="en">
       <body style={{ margin: 0 }}>
@@ -24,4 +26,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </body>
     </html>
   )
+}
+
+type Props = {
+  children: ReactNode
 }

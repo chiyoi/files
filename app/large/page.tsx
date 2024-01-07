@@ -4,7 +4,7 @@ import { Button, Flex, Text } from '@radix-ui/themes'
 import { useWeb3Modal } from '@web3modal/wagmi/react'
 import { z } from 'zod'
 import { useMounted } from '@/modules/useMounted'
-import { useHeaders } from '@/modules/requests'
+import { useHeaders } from '@/modules/api-requests'
 import AccountContext from '@/components/AccountContext'
 
 const CHUNK_SIZE = 10 * 1024 * 1024

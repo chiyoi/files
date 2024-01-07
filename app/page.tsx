@@ -7,22 +7,22 @@ import { z } from 'zod'
 import { FontHachiMaruPop } from '@/modules/fonts'
 import Delete from '@/components/Delete'
 import SelectAddress from '@/components/SelectAddress'
-import { useMounted } from '@/modules/useMounted'
+import { useAuthorization, useMounted } from '@/modules/hooks'
 import AccountContext from '@/components/AccountContext'
-import { Files, deleteFile, listFiles, putFile, setAddressName, useHeaders } from '@/modules/requests'
+import { Files, deleteFile, listFiles, putFile } from '@/modules/api-requests'
 
 const IPFS_GATEWAY_ENDPOINT = process.env.NEXT_PUBLIC_IPFS_GATEWAY_ENDPOINT
 
 const MAX_FILE_SIZE = 30 * 1024 * 1024
 
-export default function Page() {
+export default () => {
   const w3m = useWeb3Modal()
   const mounted = useMounted()
 
-  const { connecting, address, message, signature, setAddress, signMessage } = useContext(AccountContext)
+  const { connecting, addressState: [address, setAddress], message, signature, signMessage } = useContext(AccountContext)
   const connected = address !== undefined && message !== undefined
-  const headers = useHeaders(message, signature)
-  const signed = headers !== undefined
+  const authorization = useAuthorization(message, signature)
+  const signed = authorization !== undefined
 
   const [listing, setListing] = useState(false)
   const handleListFiles = () => {
@@ -42,26 +42,20 @@ export default function Page() {
       return
     }
     setUploading(true)
-    putFile(headers, address, file)
+    putFile(address, file, authorization)
       .then(handleListFiles)
       .catch(error => console.error(error))
       .finally(() => setUploading(false))
   }
 
   const [deleting, setDeleting] = useState(false)
-  function handleDeleteFile(filename: string) {
+  const handleDeleteFile = (filename: string) => {
     if (!mounted || !connected || !signed) return
     setDeleting(true)
-    deleteFile(headers, address, filename)
+    deleteFile(address, filename, authorization)
       .then(handleListFiles)
       .catch(error => console.error(error))
       .finally(() => setDeleting(false))
-  }
-
-  function handleSetAddressName(name: string) {
-    if (!mounted || address === undefined || headers === undefined) return
-    setAddressName(headers, address, name)
-      .catch(error => console.error(error))
   }
 
   const [dragOver, setDragOver] = useState(false)

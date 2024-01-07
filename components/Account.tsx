@@ -61,5 +61,5 @@ type Props = {
   isConnected: boolean,
   isConnecting: boolean,
   isSigned: boolean,
-  addressState: [string | undefined, React.Dispatch<React.SetStateAction<string | undefined>>],
+  addressState: ReturnType<typeof useState<`0x${string}`>>,
 }
