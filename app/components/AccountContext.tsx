@@ -74,7 +74,7 @@ export default (props: Props) => {
     })()
   }, [signature])
 
-  return (
+  return ( // BUG: Context update will not trigger children update.
     <AccountContext.Provider value={{ connecting, addressState, message, signature, signMessage, logout: reset }}>
       {children}
       <Account isConnecting={connecting} isConnected={isConnected} isSigned={signature !== undefined} addressState={addressState} />

@@ -31,7 +31,7 @@ export default () => {
     setListing(true)
     listFiles(address)
       .then(setFiles)
-      .catch(error => console.error(error))
+      .catch(error => (console.error(error), toast('Error occurred while listing files...')))
       .finally(() => setListing(false))
   }
 
@@ -45,7 +45,7 @@ export default () => {
     setUploading(true)
     putFile(address, file, authorization)
       .then(handleListFiles)
-      .catch(error => console.error(error))
+      .catch(error => (console.error(error), toast('Error occurred while uploading...')))
       .finally(() => setUploading(false))
   }
 
@@ -55,13 +55,13 @@ export default () => {
     setDeleting(true)
     deleteFile(address, filename, authorization)
       .then(handleListFiles)
-      .catch(error => console.error(error))
+      .catch(error => (console.error(error), toast('Error occurred while deleting...')))
       .finally(() => setDeleting(false))
   }
 
   const [dragOver, setDragOver] = useState(false)
   const [files, setFiles] = useState<z.infer<typeof Files>>([])
-  useEffect(handleListFiles, [address])
+  useEffect(handleListFiles, [connected, address])
 
   const [loadIndicator, setLoadIndicator] = useState('...')
   useEffect(() => {

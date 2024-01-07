@@ -15,13 +15,27 @@ export default (props: Props) => {
   const handleSave = async () => {
     setOpen(false)
     closeMenu?.()
-    setSavedAddress(
-      tab === 'address' ? (
-        isHex(address) ? address : (toast('Address should be hex~'), undefined)
-      ) : (
-        name !== undefined ? await resolveName(name) : (toast('Enter a name~'), undefined)
+    try {
+      setSavedAddress(
+        tab === 'address' ? (
+          isHex(address) ? (
+            address
+          ) : address === '' ? (
+            undefined
+          ) : (
+            toast('Address should be hex~'), undefined
+          )
+        ) : (
+          name !== undefined ? (
+            await resolveName(name)
+          ) : (
+            toast('Enter a name~'), undefined
+          )
+        )
       )
-    )
+    } catch (error) {
+      toast(`Failed to resolve name...`)
+    }
   }
 
   return (

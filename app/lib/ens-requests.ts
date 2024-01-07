@@ -3,7 +3,6 @@ import { z } from 'zod'
 const ENS_ENDPOINT = process.env.NEXT_PUBLIC_ENS_ENDPOINT
 
 export const resolveName = async (name: string) => {
-  console.debug(`${ENS_ENDPOINT}/${name}/address`)
   const response = await fetch(`${ENS_ENDPOINT}/${name}/address`)
   if (!response.ok) throw new Error(`Resolve Name error: ${await response.text()}`)
   return await response.text() as `0x${string}`

@@ -4,7 +4,7 @@ import { Button, DropdownMenu } from '@radix-ui/themes'
 import { useWeb3Modal } from '@web3modal/wagmi/react'
 import { useState } from 'react'
 
-export default function Account(props: Props) {
+export default (props: Props) => {
   const { isConnected, isConnecting, isSigned, addressState } = props
   const [address] = addressState
   const [open, setOpen] = useState(false)
