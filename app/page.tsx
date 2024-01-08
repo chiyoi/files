@@ -1,16 +1,18 @@
 'use client'
-import { useContext, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Box, IconButton, ScrollArea, Table, Text, Link, Tooltip } from '@radix-ui/themes'
 import { CopyIcon, DotsVerticalIcon } from '@radix-ui/react-icons'
 import { useWeb3Modal } from '@web3modal/wagmi/react'
 import { z } from 'zod'
-import { FontHachiMaruPop } from '@/app/lib/fonts'
+import { FontHachiMaruPop } from '@/app/internal/fonts'
 import Delete from '@/app/components/Delete'
 import SelectAddress from '@/app/components/SelectAddress'
-import { useAuthorization, useMounted } from '@/app/lib/hooks'
-import AccountContext, { useAccount } from '@/app/components/AccountContext'
-import { Files, deleteFile, listFiles, putFile } from '@/app/lib/api-requests'
-import { useToast } from '@/app/components/ToastContext'
+import { useAuthorization, useFallback } from '@/app/internal/hooks'
+import { Files, deleteFile, listFiles, putFile } from '@/app/internal/api-requests'
+import { useToastContext } from '@/app/components/ToastContext'
+import { useAccount } from 'wagmi'
+import { useSignContext } from '@/app/components/SignContext'
+import { useAddressContext } from '@/app/components/AddressContext'
 
 const IPFS_GATEWAY_ENDPOINT = process.env.NEXT_PUBLIC_IPFS_GATEWAY_ENDPOINT
 
@@ -18,26 +20,40 @@ const MAX_FILE_SIZE = 30 * 1024 * 1024
 
 export default () => {
   const w3m = useWeb3Modal()
-  const toast = useToast()
-
-  const { connecting, addressState: [address, setAddress], message, signature, signMessage } = useAccount()
-  const connected = address !== undefined && message !== undefined
+  const { isConnecting, isReconnecting, isConnected } = useAccount()
+  const loading = isConnecting || isReconnecting
+  const { message, signature, signMessage } = useSignContext()
   const authorization = useAuthorization(message, signature)
-  const signed = authorization !== undefined
+  const isMessageSet = message !== undefined
+  const isSigned = authorization !== undefined
+
+  const { address } = useAddressContext()
+  const isAddressSet = address !== undefined
+
+  const [dragOver, setDragOver] = useState(false)
+  const [files, setFiles] = useState<z.infer<typeof Files>>([])
+
+  const [copyCIDTooltip, setCopyCIDTooltip] = useState('copy')
+  const [copyCIDTooltipOpen, setCopyCIDTooltipOpen] = useState(false)
+  const resetCopyCIDTooltip = () => setCopyCIDTooltip('copy')
+  const setCopyCIDTooltipCopied = () => setCopyCIDTooltip('copied')
+
+  const toast = useToastContext()
 
   const [listing, setListing] = useState(false)
   const handleListFiles = () => {
-    if (!connected) return
+    if (!isAddressSet) return
     setListing(true)
     listFiles(address)
       .then(setFiles)
       .catch(error => (console.error(error), toast('Error occurred while listing files...')))
       .finally(() => setListing(false))
   }
+  useEffect(handleListFiles, [address])
 
   const [uploading, setUploading] = useState(false)
   const handlePutFile = (file: File) => {
-    if (!connected || !signed) return
+    if (!isAddressSet || !isSigned) return
     if (file.size > MAX_FILE_SIZE) {
       console.error('Files is designed for small files.')
       return
@@ -51,17 +67,13 @@ export default () => {
 
   const [deleting, setDeleting] = useState(false)
   const handleDeleteFile = (filename: string) => {
-    if (!connected || !signed) return
+    if (!isAddressSet || !isSigned) return
     setDeleting(true)
     deleteFile(address, filename, authorization)
       .then(handleListFiles)
       .catch(error => (console.error(error), toast('Error occurred while deleting...')))
       .finally(() => setDeleting(false))
   }
-
-  const [dragOver, setDragOver] = useState(false)
-  const [files, setFiles] = useState<z.infer<typeof Files>>([])
-  useEffect(handleListFiles, [connected, address])
 
   const [loadIndicator, setLoadIndicator] = useState('...')
   useEffect(() => {
@@ -77,24 +89,18 @@ export default () => {
     return () => clearInterval(timer)
   }, [uploading])
 
-  const [copyCIDTooltip, setCopyCIDTooltip] = useState('copy')
-  const [copyCIDTooltipOpen, setCopyCIDTooltipOpen] = useState(false)
-  const resetCopyCIDTooltip = () => setCopyCIDTooltip('copy')
-  const setCopyCIDTooltipCopied = () => setCopyCIDTooltip('copied')
-
-  const mounted = useMounted()
-  return mounted && (
+  return (
     <ScrollArea type='auto'
       scrollbars='both'
       onDragOver={e => {
         e.preventDefault()
-        if (!signed) return
+        if (!isSigned) return
         setDragOver(true)
       }}
       onDragLeave={() => setDragOver(false)}
       onDrop={e => {
         e.preventDefault()
-        if (!signed) return
+        if (!isSigned) return
         setDragOver(false)
         const items = e.dataTransfer.items
         for (const item of items) {
@@ -118,7 +124,7 @@ export default () => {
             </Table.Row>
           </Table.Header>
           <Table.Body>
-            {address !== undefined && !listing && files.map(file => (
+            {isAddressSet && !listing && files.map(file => (
               <Table.Row key={file.cid}>
                 <Table.Cell></Table.Cell>
                 <Table.Cell>
@@ -152,7 +158,7 @@ export default () => {
           ...FontHachiMaruPop.style,
           textAlign: 'center',
         }}>
-          {connecting ? (
+          {loading ? (
             'Loading...'
           ) : listing ? (
             'Listing files...'
@@ -162,25 +168,37 @@ export default () => {
             'Deleting...'
           ) : dragOver ? (
             'Drop to upload.'
-          ) : signed ? (
-            <>Drag and drop or <Link onClick={() => {
-              const input = document.createElement('input')
-              input.type = 'file'
-              input.onchange = (event) => {
-                const files = (event.target as HTMLInputElement).files
-                if (!files) return
-                for (const file of files)
-                  handlePutFile(file)
-              }
-              input.click()
-            }}>Select files...</Link></>
-          ) : address === undefined ? (
-            <><Link onClick={() => w3m.open()}>Sign in...</Link> or <SelectAddress addressState={[address, setAddress]}><Link>Look Around...</Link></SelectAddress></>
           ) : (
-            <Link onClick={() => {
-              if (connected) signMessage({ message })
-              else w3m.open()
-            }}>Sign in...</Link>
+            isSigned ? (
+              <>Drag and drop or {
+                <Link onClick={() => {
+                  const input = document.createElement('input')
+                  input.type = 'file'
+                  input.onchange = (event) => {
+                    const files = (event.target as HTMLInputElement).files
+                    if (!files) return
+                    for (const file of files)
+                      handlePutFile(file)
+                  }
+                  input.click()
+                }}>Select files...</Link>
+              }</>
+            ) : isMessageSet ? (
+              <Link onClick={() => signMessage({ message })}>Sign in...</Link>
+            ) : (
+              <>{
+                <Link onClick={() => w3m.open()}>Sign in...</Link>
+              } or {
+                  <SelectAddress>
+                    <Link>{
+                      isAddressSet ? (
+                        'Change Watching Address...'
+                      ) : (
+                        'Look Around...'
+                      )}</Link>
+                  </SelectAddress>
+                }</>
+            )
           )}
         </Text>
       </Box>

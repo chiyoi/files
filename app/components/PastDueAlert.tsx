@@ -1,11 +1,13 @@
-import { useAccount } from '@/app/components/AccountContext'
-import { useMounted, useNameRegistered } from '@/app/lib/hooks'
-import { AlertDialog, Button, Flex, Text } from '@radix-ui/themes'
+import { useSignContext } from '@/app/components/SignContext'
+import { useMounted, useNameRegistered } from '@/app/internal/hooks'
+import { AlertDialog, Button, Flex } from '@radix-ui/themes'
 import { Dispatch, SetStateAction } from 'react'
+import { useAccount } from 'wagmi'
 
 export default (props: Props) => {
-  const { openState: [open, setOpen], amount, } = props
-  const { addressState: [address], logout } = useAccount()
+  const { open, setOpen, amount, } = props
+  const { address } = useAccount()
+  const { resetSign: reset } = useSignContext()
   const name = useNameRegistered(address)
   const mounted = useMounted()
   return mounted && (
@@ -19,15 +21,10 @@ export default (props: Props) => {
         </AlertDialog.Description>
         <Flex gap='3' justify='end'>
           <AlertDialog.Action>
-            <Button variant='soft' color='red' onClick={logout}>
+            <Button variant='soft' color='red' onClick={reset}>
               Log Out
             </Button>
           </AlertDialog.Action>
-          <AlertDialog.Cancel>
-            <Button variant='soft' color='gray'>
-              Close
-            </Button>
-          </AlertDialog.Cancel>
         </Flex>
       </AlertDialog.Content>
     </AlertDialog.Root >
@@ -35,6 +32,7 @@ export default (props: Props) => {
 }
 
 type Props = {
-  openState: [boolean, Dispatch<SetStateAction<boolean>>],
+  open: boolean,
+  setOpen: Dispatch<SetStateAction<boolean>>,
   amount: bigint,
 }

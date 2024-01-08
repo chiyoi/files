@@ -1,23 +1,24 @@
-import { useAccount } from '@/app/components/AccountContext'
-import { useAuthorization, useNameRegistered } from '@/app/lib/hooks'
-import { setName as setAddressName } from '@/app/lib/ens-requests'
+import { useAuthorization, useNameRegistered } from '@/app/internal/hooks'
+import { setName as setAddressName } from '@/app/internal/ens-requests'
 import { Button, Dialog, Flex, Text, TextField } from '@radix-ui/themes'
 import { useState } from 'react'
-import { useToast } from '@/app/components/ToastContext'
+import { useToastContext } from '@/app/components/ToastContext'
+import { useAccount } from 'wagmi'
+import { useSignContext } from '@/app/components/SignContext'
 
 export default (props: Props) => {
   const { children, closeMenu } = props
-  const { addressState: [address], message, signature } = useAccount()
+  const { address } = useAccount()
+  const { message, signature } = useSignContext()
   const authorization = useAuthorization(message, signature)
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const nameRegistered = useNameRegistered(address)
-  const toast = useToast()
+  const toast = useToastContext()
 
   const handleSave = () => {
     setOpen(false)
-    closeMenu()
-    console.debug(authorization, address, name)
+    closeMenu?.()
     if (authorization !== undefined && address !== undefined && name !== '')
       setAddressName(address, name, authorization)
         .then(() => toast('Name set~'))
@@ -25,7 +26,7 @@ export default (props: Props) => {
 
   return (
     <Dialog.Root open={open} onOpenChange={v => {
-      !v && closeMenu()
+      !v && closeMenu?.()
       setOpen(v)
     }}>
       <Dialog.Trigger>
@@ -63,5 +64,5 @@ export default (props: Props) => {
 
 type Props = {
   children: React.ReactNode,
-  closeMenu: () => void,
+  closeMenu?: () => void,
 }

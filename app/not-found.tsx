@@ -1,5 +1,5 @@
 import { Box, Text } from '@radix-ui/themes'
-import { FontHachiMaruPop } from '@/app/lib/fonts'
+import { FontHachiMaruPop } from '@/app/internal/fonts'
 
 export default () => (
   <Box mx='auto' mt='5'>

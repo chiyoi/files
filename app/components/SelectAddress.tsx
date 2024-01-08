@@ -1,25 +1,27 @@
-import { useToast } from '@/app/components/ToastContext'
-import { resolveName } from '@/app/lib/ens-requests'
+import { useAddressContext } from '@/app/components/AddressContext'
+import { useToastContext } from '@/app/components/ToastContext'
+import { resolveName } from '@/app/internal/ens-requests'
 import { Box, Button, Dialog, Flex, Tabs, Text, TextField } from '@radix-ui/themes'
 import { ReactNode, useEffect, useState } from 'react'
 import { isHex } from 'viem'
 
 export default (props: Props) => {
-  const { children, addressState: [savedAddress, setSavedAddress], closeMenu } = props
-  const [address, setAddress] = useState(savedAddress as string)
+  const { children, closeMenu } = props
+  const { address: addressSaved, setAddressFallback: saveAddress } = useAddressContext()
+  const [address, setAddress] = useState(addressSaved as string)
   const [name, setName] = useState<string>()
   const [tab, setTab] = useState<'name' | 'address'>('name')
   const [open, setOpen] = useState(false)
-  const toast = useToast()
+  const toast = useToastContext()
 
   const handleSave = async () => {
     setOpen(false)
     closeMenu?.()
     try {
-      setSavedAddress(
+      saveAddress(
         tab === 'address' ? (
           isHex(address) ? (
-            address
+            address.toLocaleLowerCase() as `0x${string}`
           ) : address === '' ? (
             undefined
           ) : (
@@ -95,6 +97,5 @@ export default (props: Props) => {
 
 type Props = {
   children: ReactNode,
-  addressState: ReturnType<typeof useState<`0x${string}`>>,
   closeMenu?: () => void,
 }
